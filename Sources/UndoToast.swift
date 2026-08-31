@@ -63,12 +63,12 @@ struct UndoToastView: View {
             .frame(width: 16, height: 16)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text("Note deleted").font(.system(size: 12, weight: .medium))
+                Text("Заметка удалена").font(.system(size: 12, weight: .medium))
                 Text(pending.note.displayTitle)
                     .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 0)
-            Button("Undo") { NoteStore.shared.undoDelete() }
+            Button("Отменить") { NoteStore.shared.undoDelete() }
                 .buttonStyle(.borderless)
                 .font(.system(size: 12, weight: .semibold))
         }

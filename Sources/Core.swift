@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import AppKit
 import CryptoKit
+import Security
 
 // MARK: - Paths
 
@@ -13,21 +14,63 @@ enum Paths {
         return base
     }()
     static var db: URL { support.appendingPathComponent("notes.db") }
-    static var key: URL { support.appendingPathComponent("note.key") }
+    static var legacyKey: URL { support.appendingPathComponent("note.key") }
 }
 
 // MARK: - Crypto (AES-GCM for note bodies)
 
+private enum KeychainStore {
+    private static let service = "app.noty.Noty"
+    private static let account = "note-key"
+
+    private static var query: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: account]
+    }
+
+    static func load() -> Data? {
+        var q = query
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess else { return nil }
+        return result as? Data
+    }
+
+    static func save(_ data: Data) -> Bool {
+        let status = SecItemUpdate(query as CFDictionary,
+                                   [kSecValueData as String: data] as CFDictionary)
+        if status == errSecSuccess { return true }
+        guard status == errSecItemNotFound else { return false }
+        var item = query
+        item[kSecValueData as String] = data
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
+    }
+}
+
 enum Crypto {
     private static let key: SymmetricKey = {
-        if let d = try? Data(contentsOf: Paths.key), d.count == 32 {
+        if let d = KeychainStore.load() {
+            guard d.count == 32 else {
+                preconditionFailure("Noty: invalid note key in Keychain")
+            }
+            try? FileManager.default.removeItem(at: Paths.legacyKey)
             return SymmetricKey(data: d)
+        }
+        if let legacy = try? Data(contentsOf: Paths.legacyKey), legacy.count == 32 {
+            guard KeychainStore.save(legacy) else {
+                preconditionFailure("Noty: cannot migrate note key to Keychain")
+            }
+            try? FileManager.default.removeItem(at: Paths.legacyKey)
+            return SymmetricKey(data: legacy)
         }
         let k = SymmetricKey(size: .bits256)
         let d = k.withUnsafeBytes { Data($0) }
-        try? d.write(to: Paths.key, options: [.atomic])
-        try? FileManager.default.setAttributes([.posixPermissions: 0o600],
-                                               ofItemAtPath: Paths.key.path)
+        guard KeychainStore.save(d) else {
+            preconditionFailure("Noty: cannot persist note key in Keychain")
+        }
         return k
     }()
 
@@ -56,14 +99,14 @@ struct NoteColor {
     /// Slightly deeper than a highlighter pastel, so a note reads as paper with
     /// colour in it rather than a tinted white rectangle.
     static let all: [NoteColor] = [
-        NoteColor(name: "Lemon",  paper: hex(0xFCE795), dash: hex(0xE0AD08), ink: hex(0x3A3008)),
-        NoteColor(name: "Peach",  paper: hex(0xFBCFA6), dash: hex(0xE2762A), ink: hex(0x422413)),
-        NoteColor(name: "Rose",   paper: hex(0xFAC4D1), dash: hex(0xDC4570), ink: hex(0x40161F)),
-        NoteColor(name: "Lilac",  paper: hex(0xD9C7FA), dash: hex(0x7C4DEE), ink: hex(0x2A1B44)),
-        NoteColor(name: "Sky",    paper: hex(0xBEDDFA), dash: hex(0x2280D6), ink: hex(0x13293A)),
-        NoteColor(name: "Mint",   paper: hex(0xB4E8D0), dash: hex(0x0E9B6E), ink: hex(0x0F2E23)),
-        NoteColor(name: "Sand",   paper: hex(0xE3D3B4), dash: hex(0xA37B3C), ink: hex(0x372C18)),
-        NoteColor(name: "Slate",  paper: hex(0xCBD6E2), dash: hex(0x4E6579), ink: hex(0x1A242E)),
+        NoteColor(name: "Лимонный",    paper: hex(0xFCE795), dash: hex(0xE0AD08), ink: hex(0x3A3008)),
+        NoteColor(name: "Персиковый",  paper: hex(0xFBCFA6), dash: hex(0xE2762A), ink: hex(0x422413)),
+        NoteColor(name: "Розовый",     paper: hex(0xFAC4D1), dash: hex(0xDC4570), ink: hex(0x40161F)),
+        NoteColor(name: "Сиреневый",   paper: hex(0xD9C7FA), dash: hex(0x7C4DEE), ink: hex(0x2A1B44)),
+        NoteColor(name: "Небесный",    paper: hex(0xBEDDFA), dash: hex(0x2280D6), ink: hex(0x13293A)),
+        NoteColor(name: "Мятный",      paper: hex(0xB4E8D0), dash: hex(0x0E9B6E), ink: hex(0x0F2E23)),
+        NoteColor(name: "Песочный",    paper: hex(0xE3D3B4), dash: hex(0xA37B3C), ink: hex(0x372C18)),
+        NoteColor(name: "Серо-синий",  paper: hex(0xCBD6E2), dash: hex(0x4E6579), ink: hex(0x1A242E)),
     ]
 
     /// A touch darker at the foot of the sheet, the way paper catches light.
@@ -94,7 +137,7 @@ enum Ink {
     /// Faces that suit a note. Filtered to what is actually installed, so the
     /// menu never offers something that would silently fall back.
     static let allFaces: [NoteFace] = [
-        NoteFace(name: "System",       body: "",                     tab: "",                     bump: 0),
+        NoteFace(name: "Системный",    body: "",                     tab: "",                     bump: 0),
         NoteFace(name: "Noteworthy",   body: "Noteworthy-Light",     tab: "Noteworthy-Bold",      bump: 1.5),
         NoteFace(name: "Bradley Hand", body: "BradleyHandITCTT-Bold", tab: "BradleyHandITCTT-Bold", bump: 1.5),
         NoteFace(name: "Marker Felt",  body: "MarkerFelt-Thin",      tab: "MarkerFelt-Wide",      bump: 1),
@@ -171,7 +214,7 @@ struct Note: Identifiable, Hashable {
         return clean.count > 60 ? String(clean.prefix(60)) + "…" : clean
     }
 
-    var displayTitle: String { title.isEmpty ? "New note" : title }
+    var displayTitle: String { title.isEmpty ? "Новая заметка" : title }
 
     /// Completed / total, or nil when the note holds no tasks.
     var taskProgress: (done: Int, total: Int)? {
@@ -239,6 +282,7 @@ enum Tasks {
 enum Fmt {
     static let relative: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
+        f.locale = Locale(identifier: "ru_RU")
         f.unitsStyle = .abbreviated
         return f
     }()
@@ -257,7 +301,7 @@ enum Fmt {
     }()
 
     static func ago(_ d: Date) -> String {
-        if Date().timeIntervalSince(d) < 60 { return "just now" }
+        if Date().timeIntervalSince(d) < 60 { return "только что" }
         return relative.localizedString(for: d, relativeTo: Date())
     }
 }

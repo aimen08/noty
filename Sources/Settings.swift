@@ -21,7 +21,7 @@ enum Settings {
 
     /// Body text size inside a note.
     static let fontSizes: [(name: String, size: Double)] = [
-        ("Small", 12), ("Medium", 13.5), ("Large", 15.5), ("Extra Large", 18)
+        ("Маленький", 12), ("Средний", 13.5), ("Большой", 15.5), ("Очень большой", 18)
     ]
 
     static let fontRange: ClosedRange<Double> = 10...30

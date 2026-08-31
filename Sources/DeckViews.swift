@@ -344,7 +344,7 @@ struct MoreTab: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(TabPressStyle())
-        .help("\(count) more note\(count == 1 ? "" : "s")")
+        .help("Ещё заметок: \(count)")
     }
 }
 
@@ -358,7 +358,7 @@ struct EmptyTab: View {
         Button(action: action) {
             ZStack(alignment: .top) {
                 edgeTabShape(onRight: onRight).fill(.ultraThinMaterial)
-                Text("NEW NOTE")
+                Text("НОВАЯ ЗАМЕТКА")
                     .font(Ink.tabFont)
                     .tracking(Ink.tabTracking)
                     .foregroundStyle(.secondary)
@@ -392,7 +392,7 @@ struct PlusButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.15), value: hovering)
-        .help("New Note  ⌥⌘N")
+        .help("Новая заметка  ⌥⌘N")
     }
 }
 
@@ -401,11 +401,11 @@ struct PlusButton: View {
 extension View {
     func noteContextMenu(_ note: Note) -> some View {
         contextMenu {
-            Button(note.pinned ? "Unpin" : "Pin") { NoteStore.shared.togglePin(id: note.id) }
-            Button("Archive") { NoteStore.shared.setArchived(id: note.id, true) }
-            Button("Cycle colour  ⌘.") { NoteStore.shared.cycleColor(id: note.id) }
+            Button(note.pinned ? "Открепить" : "Закрепить") { NoteStore.shared.togglePin(id: note.id) }
+            Button("В архив") { NoteStore.shared.setArchived(id: note.id, true) }
+            Button("Сменить цвет  ⌘.") { NoteStore.shared.cycleColor(id: note.id) }
             Divider()
-            Button("Delete") { NoteStore.shared.delete(id: note.id) }
+            Button("Удалить") { NoteStore.shared.delete(id: note.id) }
         }
     }
 }

@@ -16,23 +16,33 @@ jobs:
   release:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: main
           fetch-depth: 0
 
       - name: Work out the version
         id: v
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ inputs.version }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
           else
-            VERSION="${GITHUB_REF_NAME#v}"
+            VERSION="${REF_NAME#v}"
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
-          # a monotonic build number Sparkle can compare
-          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must be numeric SemVer (X.Y.Z)"
+            exit 1
+          fi
+          {
+            echo "version=$VERSION"
+            echo "tag=v$VERSION"
+            # a monotonic build number Sparkle can compare
+            echo "build=$(git rev-list --count HEAD)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Fetch Sparkle
         run: ./scripts/fetch-sparkle.sh
@@ -46,13 +56,16 @@ jobs:
           codesign --verify --deep --strict build/Noty.app
 
       - name: Package the disk image
-        run: ./scripts/make-dmg.sh "${{ steps.v.outputs.version }}"
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: ./scripts/make-dmg.sh "$VERSION"
 
       - name: Sign the update and write the appcast
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           VERSION: ${{ steps.v.outputs.version }}
           BUILD: ${{ steps.v.outputs.build }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
           if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
             echo "::error::SPARKLE_PRIVATE_KEY secret is not set — updates cannot be signed."
@@ -66,26 +79,30 @@ jobs:
           ./scripts/make-appcast.sh \
             "build/Noty-${VERSION}.dmg" \
             "$KEYFILE" \
-            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${{ steps.v.outputs.tag }}/Noty-${VERSION}.dmg"
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Noty-${VERSION}.dmg"
           rm -f "$KEYFILE"
 
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
-          V="${{ steps.v.outputs.version }}"
+          V="$VERSION"
           # A stable filename as well, so the website's download link never has to
           # be edited. Sparkle keeps using the versioned one named in the appcast.
           cp "build/Noty-${V}.dmg" build/Noty.dmg
-          gh release create "${{ steps.v.outputs.tag }}" \
+          gh release create "$TAG" \
             "build/Noty-${V}.dmg" build/Noty.dmg \
             --title "Noty ${V}" \
             --generate-notes \
             --latest || \
-          gh release upload "${{ steps.v.outputs.tag }}" \
+          gh release upload "$TAG" \
             "build/Noty-${V}.dmg" build/Noty.dmg --clobber
 
       - name: Commit the appcast so Sparkle can see the update
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -93,6 +110,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "appcast unchanged"
           else
-            git commit -m "Release ${{ steps.v.outputs.version }}: update appcast"
+            git commit -m "Release ${VERSION}: update appcast"
             git push origin HEAD:main
           fi

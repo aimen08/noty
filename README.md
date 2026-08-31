@@ -120,7 +120,8 @@ import reads that back. All Notes shows a `done/total` count per note.
 ## Your notes stay on your Mac
 
 - Local SQLite database in `~/Library/Application Support/Noty/`.
-- **Note bodies are encrypted with AES-GCM** (CryptoKit, 256-bit). Titles,
+- **Note bodies are encrypted with AES-GCM** (CryptoKit, 256-bit), with the
+  encryption key stored in the macOS Keychain. Titles,
   colours and timestamps stay in plaintext so lists render without unsealing
   every row.
 - No account, no server, no analytics, no telemetry, no tracking SDKs.
@@ -222,9 +223,8 @@ Set `NOTY_DEBUG_DECK=1` in the environment to trace deck state transitions on st
 - **Not sandboxed**, so data lives in `~/Library/Application Support/Noty/`
   rather than `~/Library/Containers/`. Sandboxing needs a provisioning profile,
   which needs Xcode and a developer account.
-- The AES key is a `0600` file beside the database. The Keychain is the right
-  home for it in a distributed build, but an ad-hoc signature changes on every
-  rebuild, which makes the Keychain re-prompt or deny each time.
+- The AES key is stored in the macOS Keychain. Existing `note.key` files are
+  migrated once and removed after a successful Keychain write.
 - `.stickies` here is Noty's own JSON archive format — the original's is opaque,
   so the two are not interchangeable. This one round-trips its own exports with
   full fidelity.

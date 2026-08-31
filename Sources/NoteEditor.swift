@@ -355,7 +355,7 @@ struct NoteEditorView: View {
                 .foregroundStyle(pal.ink.opacity(0.92))
                 .lineLimit(1)
             Spacer(minLength: 6)
-            Text(savedAt.map { "Saved · \(Fmt.ago($0))" } ?? "Not saved")
+            Text(savedAt.map { "Сохранено · \(Fmt.ago($0))" } ?? "Не сохранено")
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.42))
             Button { NoteStore.shared.togglePin(id: note.id) } label: {
@@ -367,7 +367,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(note.pinned ? 0.85 : 0.4))
-            .help(note.pinned ? "Unpin — ⌘P" : "Pin so it stays open  ⌘P")
+            .help(note.pinned ? "Открепить — ⌘P" : "Закрепить — заметка останется открытой  ⌘P")
 
             Button { deck.bridge.toggleTaskLine() } label: {
                 Image(systemName: "checklist")
@@ -377,7 +377,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(0.5))
-            .help("Task  ⌘T")
+            .help("Задача  ⌘T")
             Button { deck.findQuery = deck.findQuery == nil ? "" : nil } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 10.5, weight: .semibold))
@@ -386,7 +386,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(0.5))
-            .help("Find  ⌘F")
+            .help("Найти  ⌘F")
         }
         .padding(.horizontal, 14)
         .frame(height: 32)
@@ -396,7 +396,7 @@ struct NoteEditorView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 10)).foregroundStyle(pal.ink.opacity(0.45))
-            TextField("Find in note", text: Binding(
+            TextField("Найти в заметке", text: Binding(
                 get: { deck.findQuery ?? "" },
                 set: { deck.findQuery = $0; deck.bridge.recount($0) }))
                 .textFieldStyle(.plain)
@@ -438,15 +438,15 @@ struct NoteEditorView: View {
                 .help(c.name)
             }
             Spacer(minLength: 8)
-            footerButton("Archive") {
+            footerButton("В архив") {
                 NoteStore.shared.setArchived(id: note.id, true)
                 controller.collapse()
             }
-            footerButton("Delete") {
+            footerButton("Удалить") {
                 NoteStore.shared.delete(id: note.id)
                 controller.collapse()
             }
-            footerButton("Close") { controller.collapse() }
+            footerButton("Закрыть") { controller.collapse() }
         }
         .padding(.horizontal, 14)
         .frame(height: 34)

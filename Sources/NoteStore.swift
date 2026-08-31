@@ -136,17 +136,17 @@ final class NoteStore: ObservableObject {
 
     private func seedWelcomeNote() {
         create(body: """
-        Welcome to Noty
+        Добро пожаловать в Noty
 
-        Your notes live at the edge of the screen. Slide the pointer to the \
-        right edge and the deck fans out.
+        Ваши заметки живут у края экрана. Подведите указатель к правому краю — \
+        панель раскроется.
 
-        ⌥⌘N  new note
-        ⌥⌘A  all notes
-        ⌥⌘L  archive
+        ⌥⌘N  новая заметка
+        ⌥⌘A  все заметки
+        ⌥⌘L  архив
 
-        Inside a note: Esc closes, ⌘F finds, ⌘. cycles the colour, \
-        ⌘⌫ deletes with ten seconds to undo.
+        В заметке: Esc закрывает, ⌘F ищет, ⌘. меняет цвет, \
+        ⌘⌫ удаляет заметку — её можно вернуть в течение 10 секунд.
         """, color: 0)
     }
 }
