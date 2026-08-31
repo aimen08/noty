@@ -64,8 +64,6 @@ enum DeckGeom {
 
     // Fan
     static let tabWidth: CGFloat = 30
-    static let tabHeightMax: CGFloat = 118
-    static let tabHeightMin: CGFloat = 58
     static let tabGap: CGFloat = 7
     /// How far the next tab laps over the one before it.
     static let tabLap: CGFloat = 40
@@ -98,7 +96,6 @@ enum DeckGeom {
     static let chipGap: CGFloat = 6
     static let fanWidth: CGFloat = 50
     static let plusSize: CGFloat = 28
-    static let plusInset: CGFloat = 14
     static let plusGap: CGFloat = 12
     static let moreTabHeight: CGFloat = 34
 

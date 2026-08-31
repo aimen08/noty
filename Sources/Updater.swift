@@ -21,8 +21,6 @@ final class Updater {
         set { controller.updater.automaticallyChecksForUpdates = newValue }
     }
 
-    var canCheck: Bool { controller.updater.canCheckForUpdates }
-
     /// The deck is an accessory app, so raise it before Sparkle shows a window.
     func checkForUpdates() {
         NSApp.activate()
@@ -43,8 +41,6 @@ final class Updater {
         get { false }
         set { _ = newValue }
     }
-    var canCheck: Bool { false }
-
     func checkForUpdates() {
         NSApp.activate()
         let a = NSAlert()
