@@ -13,7 +13,7 @@ deck fans out.
 
 | At rest | Fanned | A note pulled open |
 |---|---|---|
-| ![The deck at rest: a thin pill of coloured dashes on the screen edge](screenshots/rest.png) | ![The deck fanned into shingled paper tabs](screenshots/fan.png) | ![A note pulled clear of the deck, carrying its tab down the left side](screenshots/open.png) |
+| ![The deck at rest: a thin pill of coloured dashes on the screen edge](site/rest.png) | ![The deck fanned into shingled paper tabs](site/fan.png) | ![A note pulled clear of the deck, carrying its tab down the left side](site/open.png) |
 
 ## Three states, one movement
 

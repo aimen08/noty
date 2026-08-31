@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var deckManager: DeckManager!

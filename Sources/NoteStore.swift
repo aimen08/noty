@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import AppKit
 
 /// Observable in-memory model. SQLite is written through on every mutation;
 /// the array is the single source of truth for every window and deck.
