@@ -200,6 +200,15 @@ enum Settings {
     /// the deck does not open every note in turn.
     static let openOnHoverDelay: TimeInterval = 0.4
 
+    /// Show a lightweight peek / flyout preview card when hovering a tab.
+    static var tabPreview: Bool {
+        get { d.object(forKey: "tabPreview") as? Bool ?? true }
+        set { d.set(newValue, forKey: "tabPreview") }
+    }
+
+    /// How long the pointer must rest on a tab before its preview card appears.
+    static let tabPreviewDelay: TimeInterval = 0.18
+
     /// Style Markdown inline — headings, emphasis, code, quotes.
     static var markdownStyling: Bool {
         get { d.object(forKey: "markdownStyling") as? Bool ?? true }

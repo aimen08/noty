@@ -45,6 +45,7 @@ final class DeckModel: ObservableObject {
     @Published var markdown: Bool = Settings.markdownStyling
     @Published var noteSize = Settings.noteSize
     @Published var openOnHover: Bool = Settings.openOnHover
+    @Published var tabPreview: Bool = Settings.tabPreview
     /// Set while a tab is being dragged. The deck must not tidy itself away
     /// mid-drag just because the pointer strayed out of the edge strip.
     @Published var isDragging = false
@@ -65,6 +66,7 @@ final class DeckModel: ObservableObject {
         markdown = Settings.markdownStyling
         noteSize = Settings.noteSize
         openOnHover = Settings.openOnHover
+        tabPreview = Settings.tabPreview
     }
 }
 
@@ -202,14 +204,16 @@ final class DeckController: NSObject {
             }
         } else {
             // Let the exit animation play at full size, then shrink the panel.
-            model.state = new
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                self.model.state = new
+            }
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
                 DeckLog.line("shrink fires; state=\(self.model.state)")
                 self.layout()
             }
             shrinkWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
         }
 
         noteActivity()

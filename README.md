@@ -119,6 +119,7 @@ import reads that back. All Notes shows a `done/total` count per note.
   Everything applies immediately.
 - **Open on hover.** Off by default: turn it on and resting the pointer on a tab
   opens that note without a click.
+- **Tab preview on hover.** Rest on any tab to peek at a flyout card showing its title, checklist progress and content snippet without opening the full note.
 - **Markdown as you type.** `# headings`, `**bold**`, `*italic*`, `` `code` ``,
   `~~struck~~`, `> quotes`, `- bullets` and `[links](https://example.com)` are
   styled in place. Markers are hidden on every line but the one the caret is on,

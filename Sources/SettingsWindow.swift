@@ -118,6 +118,7 @@ final class SettingsModel: ObservableObject {
     @Published var markdown: Bool       { didSet { Settings.markdownStyling = markdown; apply() } }
     @Published var noteSizeIndex: Int   { didSet { Settings.noteSizeIndex = noteSizeIndex; apply() } }
     @Published var openOnHover: Bool    { didSet { Settings.openOnHover = openOnHover; apply() } }
+    @Published var tabPreview: Bool     { didSet { Settings.tabPreview = tabPreview; apply() } }
 
     @Published var scNewNote: Shortcut  { didSet { Settings.scNewNote = scNewNote; HotKeys.shared.reload() } }
     @Published var scAllNotes: Shortcut { didSet { Settings.scAllNotes = scAllNotes; HotKeys.shared.reload() } }
@@ -151,6 +152,7 @@ final class SettingsModel: ObservableObject {
         markdown = Settings.markdownStyling
         noteSizeIndex = Settings.noteSizeIndex
         openOnHover = Settings.openOnHover
+        tabPreview = Settings.tabPreview
         scNewNote = Settings.scNewNote
         scAllNotes = Settings.scAllNotes
         scArchive = Settings.scArchive
@@ -222,6 +224,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     func syncPreferences() {
         model.displayTarget = Settings.displayTarget
+        model.tabPreview = Settings.tabPreview
     }
 
     func show() {
@@ -357,6 +360,11 @@ struct SettingsView: View {
             Text("Tabs stay on the edge with their labels showing, instead of folding back into the pill when the pointer leaves.")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        VStack(alignment: .leading, spacing: 3) {
+            Toggle("Show preview on hover", isOn: $model.tabPreview)
+            Text("Hover over a tab to peek at its contents without opening it.")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
         }
         VStack(alignment: .leading, spacing: 3) {
             Toggle("Open a note by hovering its tab", isOn: $model.openOnHover)
