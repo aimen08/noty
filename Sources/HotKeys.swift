@@ -17,11 +17,13 @@ final class HotKeys {
 
     func register(newNote: @escaping () -> Void,
                   allNotes: @escaping () -> Void,
-                  archive: @escaping () -> Void) {
+                  archive: @escaping () -> Void,
+                  capture: @escaping () -> Void) {
         handlers = [
             (1, { Settings.scNewNote }, newNote),
             (2, { Settings.scAllNotes }, allNotes),
             (3, { Settings.scArchive }, archive),
+            (4, { Settings.scCapture }, capture),
         ]
         reload()
     }

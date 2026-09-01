@@ -14,7 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HotKeys.shared.register(
             newNote: { [weak self] in self?.newNote() },
             allNotes: { [weak self] in self?.openAllNotes() },
-            archive:  { [weak self] in self?.openArchive() }
+            archive:  { [weak self] in self?.openArchive() },
+            capture:  { QuickCapture.shared.toggle() }
         )
 
         // Sparkle only schedules its background checks once the controller
@@ -38,6 +39,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openAllNotes() { LibraryWindow.shared.show(mode: .all) }
+    @objc func quickCapture() { QuickCapture.shared.toggle() }
+
+    /// noty:// — the whole automation surface. The text only ever becomes note
+    /// content, never anything executed, so there is nothing here to harden
+    /// beyond ignoring what we do not recognise.
+    ///   noty://new?text=…   create a note (no text → open quick capture)
+    ///   noty://capture      open the quick capture box
+    ///   noty://all          the All Notes window
+    ///   noty://settings     the Settings window
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where url.scheme == "noty" {
+            let text = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == "text" }?.value ?? ""
+            switch url.host {
+            case "new" where !text.isEmpty:
+                _ = NoteStore.shared.create(body: text)
+            case "new", "capture":
+                QuickCapture.shared.show()
+            case "all":      openAllNotes()
+            case "settings": openSettings()
+            default: break
+            }
+        }
+    }
     @objc func openSettings() { SettingsWindow.shared.show() }
 
     /// Re-read preferences into every deck. Settings calls this on each change.

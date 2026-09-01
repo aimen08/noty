@@ -123,6 +123,7 @@ final class SettingsModel: ObservableObject {
     @Published var scNewNote: Shortcut  { didSet { Settings.scNewNote = scNewNote; HotKeys.shared.reload() } }
     @Published var scAllNotes: Shortcut { didSet { Settings.scAllNotes = scAllNotes; HotKeys.shared.reload() } }
     @Published var scArchive: Shortcut  { didSet { Settings.scArchive = scArchive; HotKeys.shared.reload() } }
+    @Published var scCapture: Shortcut  { didSet { Settings.scCapture = scCapture; HotKeys.shared.reload() } }
     // Handled by the open note itself, so these need no hotkey registration.
     @Published var scArchiveNote: Shortcut { didSet { Settings.scArchiveNote = scArchiveNote } }
     @Published var scClose: Shortcut   { didSet { Settings.scClose = scClose } }
@@ -156,6 +157,7 @@ final class SettingsModel: ObservableObject {
         scNewNote = Settings.scNewNote
         scAllNotes = Settings.scAllNotes
         scArchive = Settings.scArchive
+        scCapture = Settings.scCapture
         scArchiveNote = Settings.scArchiveNote
         scClose = Settings.scClose
         scFind = Settings.scFind
@@ -207,6 +209,7 @@ final class SettingsModel: ObservableObject {
     func duplicate(of s: Shortcut, ignoring label: String) -> Bool {
         guard s.isSet else { return false }
         let others = [("new", scNewNote), ("all", scAllNotes), ("archive", scArchive),
+                      ("capture", scCapture),
                       ("archiveNote", scArchiveNote), ("close", scClose), ("find", scFind),
                       ("task", scTask), ("pin", scPin), ("colour", scColour),
                       ("delete", scDelete), ("bigger", scBigger), ("smaller", scSmaller)]
@@ -284,6 +287,7 @@ struct SettingsView: View {
                 shortcutRow("New note", model.scNewNote, "new") { model.scNewNote = $0 }
                 shortcutRow("All Notes", model.scAllNotes, "all") { model.scAllNotes = $0 }
                 shortcutRow("Archive window", model.scArchive, "archive") { model.scArchive = $0 }
+            shortcutRow("Quick capture", model.scCapture, "capture") { model.scCapture = $0 }
                 Spacer(minLength: 0)
             }
             VStack(alignment: .leading, spacing: 7) {

@@ -56,6 +56,20 @@ right-click the pill → *Deck size* for the four presets.
 tabs and their labels stay on the edge without being hovered first. Off by
 default; notes still open, close and idle away exactly as before.
 
+## Automation
+
+Noty registers the `noty://` URL scheme, so Shortcuts, Raycast, Alfred or a
+terminal can talk to it:
+
+```sh
+open "noty://new?text=Buy%20milk"   # create a note with this text
+open "noty://capture"               # open the quick-capture box
+open "noty://all"                   # the All Notes window
+open "noty://settings"              # Settings
+```
+
+The text only ever becomes note content — nothing in a URL is executed.
+
 ## Shortcuts
 
 All of these are listed in Settings (`⌘,`), and the first four can be rebound
@@ -65,6 +79,7 @@ Accessibility permission is required**:
 | | |
 |---|---|
 | `⌥⌘N` | new note (opens it straight away) |
+| `⇧⌘Space` | quick capture — jot without opening the editor |
 | `⌥⌘A` | All Notes |
 | `⌥⌘L` | the Archive window |
 
@@ -101,6 +116,9 @@ import reads that back. All Notes shows a `done/total` count per note.
 
 - **Archived, not deleted.** Archiving pulls a note out of the deck but keeps it
   in All Notes → Archive, restorable at any time.
+- **Quick capture** (`⇧⌘Space`) — a small floating box from anywhere: type,
+  hit `↩`, and it becomes a note in the deck without opening the editor.
+  `⇧↩` for a new line, `esc` to cancel, click away to dismiss.
 - **All Notes** (`⌥⌘A`) — one window, search across every note body and title,
   with an editable detail pane.
 - **Multi-display & relocation** — show the deck on all displays, only the main

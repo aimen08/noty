@@ -611,13 +611,16 @@ struct NotePreviewCard: View {
                             if Tasks.isTask(line) {
                                 let isDone = Tasks.marker(of: line) == Tasks.done
                                 HStack(spacing: 4) {
+                                    // Done tasks dim in the note's own ink, exactly as the
+                                    // editor draws them. Color.secondary follows the system
+                                    // appearance, not the paper — near-white in dark mode.
                                     Image(systemName: isDone ? "checkmark.square.fill" : "square")
                                         .font(.system(size: 8.5))
-                                        .foregroundStyle(isDone ? Color.secondary : note.palette.ink.opacity(0.75))
+                                        .foregroundStyle(note.palette.ink.opacity(isDone ? 0.45 : 0.75))
                                     Text(Tasks.stripped(line))
                                         .font(.system(size: 10.5))
-                                        .strikethrough(isDone)
-                                        .foregroundStyle(isDone ? Color.secondary : note.palette.ink.opacity(0.85))
+                                        .strikethrough(isDone, color: note.palette.ink.opacity(0.45))
+                                        .foregroundStyle(note.palette.ink.opacity(isDone ? 0.45 : 0.85))
                                         .lineLimit(1)
                                 }
                             } else {
