@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.3.0</title>
-      <pubDate>Tue, 01 Sep 2026 12:39:38 +0000</pubDate>
-      <sparkle:version>75</sparkle:version>
-      <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
+      <title>1.4.0</title>
+      <pubDate>Tue, 01 Sep 2026 18:20:20 +0000</pubDate>
+      <sparkle:version>82</sparkle:version>
+      <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.3.0</p><ul><li>Arm the hot-key repeat window on close as well as open</li><li>One hot-key press is one toggle, however long it is held</li><li>Quick capture no longer activates the app</li><li>Quick capture and the noty:// URL scheme</li><li>Preview card strikes done tasks in the note&#x27;s ink</li><li>Release 1.2.1: update appcast</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.3.0/Noty-1.3.0.dmg" type="application/octet-stream" sparkle:edSignature="nWKwSO7Jd3/6xGwZrKlBrULTTxTkqF53Y+YhtoktYhCATFi8SVjX/NWcGUix42GnprMNE4NKRqGM9aKlWEQTCQ==" length="1872607" />
+      <description><![CDATA[<p>Noty 1.4.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/20">#20</a> Add per-note Auto, LTR, and RTL text direction &mdash; @alirexa</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.4.0/Noty-1.4.0.dmg" type="application/octet-stream" sparkle:edSignature="o1AlS94AH5WyhB84uI4lJRM1ZQHer3MT63g5t/NmZsXeHT9riKEt6Pva0So3rCFn1bFjB9n9kSdgVi6xOQa+Cg==" length="1884628" />
     </item>
   </channel>
 </rss>
