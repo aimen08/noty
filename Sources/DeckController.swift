@@ -52,11 +52,6 @@ final class DeckModel: ObservableObject {
     /// and nothing else — recomputing the position from a height that changes
     /// mid-resize makes the note jump the instant the drag ends.
     @Published var openedHeight: CGFloat = Settings.noteSize.height
-    /// Published by the controller the instant the panel is resized. Reading this
-    /// instead of a GeometryReader matters: the reader reports the *previous* size
-    /// for a frame or two after a resize, and the deck lays out against the wrong
-    /// edge in the meantime.
-    @Published var panelHeight: CGFloat = 0
 
     func syncPreferences() {
         style = Settings.deckStyle
@@ -170,7 +165,6 @@ final class DeckController: NSObject {
                            y: vis.minY, width: w, height: vis.height)
         }
         panel.setFrame(frame, display: true, animate: false)
-        if model.panelHeight != frame.height { model.panelHeight = frame.height }
     }
 
     func refreshLevel() {

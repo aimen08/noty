@@ -30,10 +30,16 @@ struct DeckRootView: View {
     }
 
     var body: some View {
-        let h = max(1, deck.panelHeight)
-        let lay = layout(h)
+        // The height comes from the live layout pass, not from a value cached on
+        // the model. When the panel resizes, AppKit relays out the existing view
+        // tree at the new size *before* SwiftUI re-evaluates this body; anything
+        // computed from a stored height is stale for that frame, and the pill
+        // drew with zero padding at the top corner of the screen.
+        GeometryReader { geo in
+            let h = max(1, geo.size.height)
+            let lay = layout(h)
 
-        return ZStack(alignment: onRight ? .topTrailing : .topLeading) {
+            ZStack(alignment: onRight ? .topTrailing : .topLeading) {
 
                 if deck.fanVisible {
                     FanColumn(deck: deck, controller: controller,
@@ -42,7 +48,7 @@ struct DeckRootView: View {
                         .padding(.top, fanTop(lay, panelHeight: h))
                 } else {
                     PillView(notes: store.active)
-                        .padding(.top, max(0, (h - DeckGeom.pillHeight(noteCount: max(1, store.active.count))) / 2))
+                        .padding(.top, pillTop(panelHeight: h))
                         .padding(onRight ? .trailing : .leading, 1)
                         .transition(.opacity)
                 }
@@ -57,14 +63,24 @@ struct DeckRootView: View {
                         .id(id)
                 }
             }
-        // A ZStack is only as wide as its widest child, so it has to be told to fill
-        // the panel — otherwise the deck sits at the panel's left edge with a dead
-        // gap against the screen. Filling from the parent's proposal (rather than a
-        // measured width) keeps it pinned to the edge through a resize.
-        .frame(maxWidth: .infinity, maxHeight: .infinity,
-               alignment: onRight ? .topTrailing : .topLeading)
+            // A ZStack is only as wide as its widest child, so it has to be told to fill
+            // the panel — otherwise the deck sits at the panel's left edge with a dead
+            // gap against the screen. Filling from the parent's proposal (rather than a
+            // measured width) keeps it pinned to the edge through a resize.
+            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                   alignment: onRight ? .topTrailing : .topLeading)
+        }
         .animation(.spring(response: 0.30, dampingFraction: 0.9), value: deck.fanVisible)
         .animation(.easeInOut(duration: 0.22), value: deck.style)
+    }
+
+    /// Where the pill sits, for any panel height. At rest the panel is exactly the
+    /// pill's height and this is zero; in a full-height panel it lands on the same
+    /// screen position the resting panel occupies, so the pill does not move as the
+    /// panel grows around it or shrinks back to it.
+    private func pillTop(panelHeight h: CGFloat) -> CGFloat {
+        let pillH = DeckGeom.pillHeight(noteCount: max(1, store.active.count))
+        return (1.0 - Settings.deckYRatio) * max(0, h - pillH)
     }
 
     private func fanTop(_ lay: DeckLayout, panelHeight h: CGFloat) -> CGFloat {
