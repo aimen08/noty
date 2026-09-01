@@ -103,10 +103,13 @@ enum EditorStyleEngine {
                       ink: NSColor,
                       size: CGFloat,
                       markdownEnabled: Bool,
+                      textDirection: NoteTextDirection = .automatic,
                       bodyFont: @escaping FontProvider,
                       isCompletedTask: @escaping CompletedTaskPredicate) -> [NSRange] {
         let font = bodyFont(size)
-        textView.typingAttributes = [.font: font, .foregroundColor: ink]
+        let paragraphStyle = textDirection.paragraphStyle
+        textView.typingAttributes = [.font: font, .foregroundColor: ink,
+                                     .paragraphStyle: paragraphStyle]
 
         guard let storage = textView.textStorage else { return [] }
         let planned = normalizedStyleRanges(ranges, length: storage.length)
@@ -128,6 +131,7 @@ enum EditorStyleEngine {
             storage.removeAttribute(.link, range: range)
             storage.addAttribute(.foregroundColor, value: ink, range: range)
             storage.addAttribute(.font, value: font, range: range)
+            storage.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
 
             let fragment = storage.mutableString.substring(with: range)
             if markdownEnabled {

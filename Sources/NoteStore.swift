@@ -73,6 +73,14 @@ final class NoteStore: ObservableObject {
         store.upsert(notes[i])
     }
 
+    func setTextDirection(id: String, direction: NoteTextDirection) {
+        guard let i = notes.firstIndex(where: { $0.id == id }),
+              notes[i].textDirection != direction else { return }
+        notes[i].textDirection = direction
+        notes[i].modified = Date()
+        store.upsert(notes[i])
+    }
+
     func setArchived(id: String, _ archived: Bool) {
         guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
         notes[i].archived = archived

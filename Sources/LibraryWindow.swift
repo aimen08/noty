@@ -277,6 +277,11 @@ struct LibraryDetail: View {
                 Text("Edited \(Fmt.ago(note.modified))")
                     .font(.system(size: 10.5)).foregroundStyle(.secondary)
 
+                NoteTextDirectionMenu(direction: note.textDirection) {
+                    NoteStore.shared.setTextDirection(id: note.id, direction: $0)
+                }
+                .foregroundStyle(.secondary)
+
                 if note.archived {
                     Button("Restore") { NoteStore.shared.setArchived(id: note.id, false) }
                         .controlSize(.small)
@@ -299,6 +304,7 @@ struct LibraryDetail: View {
             NoteTextView(text: $text, ink: NSColor(pal.ink), bridge: bridge,
                          autofocus: false, fontSize: Settings.noteFontSize,
                          markdownEnabled: Settings.markdownStyling,
+                         textDirection: note.textDirection,
                          styleToken: "\(note.color)|\(Settings.noteFontSize)|\(Settings.noteFontName)|\(Settings.markdownStyling)")
                 .background(pal.paper)
         }

@@ -8,11 +8,11 @@ private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.sel
 final class Store {
     private var db: OpaquePointer?
 
-    init() {
-        if sqlite3_open_v2(Paths.db.path, &db,
+    init(dbURL: URL = Paths.db) {
+        if sqlite3_open_v2(dbURL.path, &db,
                            SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
                            nil) != SQLITE_OK {
-            NSLog("Noty: cannot open db at \(Paths.db.path)")
+            NSLog("Noty: cannot open db at \(dbURL.path)")
         }
         exec("PRAGMA journal_mode=WAL;")
         exec("PRAGMA synchronous=NORMAL;")
@@ -25,7 +25,9 @@ final class Store {
           created REAL NOT NULL,
           modified REAL NOT NULL,
           archived INTEGER NOT NULL DEFAULT 0,
-          sort_order REAL NOT NULL DEFAULT 0
+          sort_order REAL NOT NULL DEFAULT 0,
+          pinned INTEGER NOT NULL DEFAULT 0,
+          text_direction TEXT NOT NULL DEFAULT 'automatic'
         );
         """)
         exec("CREATE INDEX IF NOT EXISTS idx_notes_archived ON notes(archived, sort_order);")
@@ -47,6 +49,10 @@ final class Store {
             exec("ALTER TABLE notes ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;")
             NSLog("Noty: migrated notes table — added pinned")
         }
+        if !existing.contains("text_direction") {
+            exec("ALTER TABLE notes ADD COLUMN text_direction TEXT NOT NULL DEFAULT 'automatic';")
+            NSLog("Noty: migrated notes table — added text direction")
+        }
     }
 
     deinit { if let db { sqlite3_close_v2(db) } }
@@ -64,7 +70,7 @@ final class Store {
     func load() -> [Note] {
         var out: [Note] = []
         var st: OpaquePointer?
-        let sql = "SELECT id,title,body,color,created,modified,archived,sort_order,pinned FROM notes ORDER BY sort_order ASC;"
+        let sql = "SELECT id,title,body,color,created,modified,archived,sort_order,pinned,text_direction FROM notes ORDER BY sort_order ASC;"
         guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { return out }
         defer { sqlite3_finalize(st) }
         while sqlite3_step(st) == SQLITE_ROW {
@@ -81,6 +87,8 @@ final class Store {
             n.archived = sqlite3_column_int(st, 6) != 0
             n.order = sqlite3_column_double(st, 7)
             n.pinned = sqlite3_column_int(st, 8) != 0
+            let rawDirection = sqlite3_column_text(st, 9).map { String(cString: $0) }
+            n.textDirection = rawDirection.flatMap(NoteTextDirection.init(rawValue:)) ?? .automatic
             out.append(n)
         }
         return out
@@ -90,12 +98,13 @@ final class Store {
 
     func upsert(_ n: Note) {
         let sql = """
-        INSERT INTO notes (id,title,body,color,created,modified,archived,sort_order,pinned)
-        VALUES (?,?,?,?,?,?,?,?,?)
+        INSERT INTO notes (id,title,body,color,created,modified,archived,sort_order,pinned,text_direction)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET
           title=excluded.title, body=excluded.body, color=excluded.color,
           modified=excluded.modified, archived=excluded.archived,
-          sort_order=excluded.sort_order, pinned=excluded.pinned;
+          sort_order=excluded.sort_order, pinned=excluded.pinned,
+          text_direction=excluded.text_direction;
         """
         var st: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { return }
@@ -112,6 +121,7 @@ final class Store {
         sqlite3_bind_int(st, 7, n.archived ? 1 : 0)
         sqlite3_bind_double(st, 8, n.order)
         sqlite3_bind_int(st, 9, n.pinned ? 1 : 0)
+        sqlite3_bind_text(st, 10, n.textDirection.rawValue, -1, SQLITE_TRANSIENT)
         if sqlite3_step(st) != SQLITE_DONE {
             NSLog("Noty: upsert failed — \(String(cString: sqlite3_errmsg(db)))")
         }

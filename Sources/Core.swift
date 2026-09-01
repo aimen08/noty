@@ -164,6 +164,53 @@ enum Ink {
 
 // MARK: - Model
 
+enum NoteTextDirection: String, Codable, CaseIterable, Identifiable {
+    case automatic
+    case leftToRight
+    case rightToLeft
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .automatic:   "Automatic"
+        case .leftToRight: "Left to Right"
+        case .rightToLeft: "Right to Left"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .automatic:   "textformat"
+        case .leftToRight: "text.alignleft"
+        case .rightToLeft: "text.alignright"
+        }
+    }
+
+    var writingDirection: NSWritingDirection {
+        switch self {
+        case .automatic:   .natural
+        case .leftToRight: .leftToRight
+        case .rightToLeft: .rightToLeft
+        }
+    }
+
+    var alignment: NSTextAlignment {
+        switch self {
+        case .automatic:   .natural
+        case .leftToRight: .left
+        case .rightToLeft: .right
+        }
+    }
+
+    var paragraphStyle: NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.baseWritingDirection = writingDirection
+        style.alignment = alignment
+        return style
+    }
+}
+
 struct Note: Identifiable, Hashable {
     var id: String = UUID().uuidString
     var title: String = ""
@@ -173,6 +220,7 @@ struct Note: Identifiable, Hashable {
     var modified: Date = Date()
     var archived: Bool = false
     var pinned: Bool = false
+    var textDirection: NoteTextDirection = .automatic
     var order: Double = 0
 
     var palette: NoteColor { NoteColor.at(color) }

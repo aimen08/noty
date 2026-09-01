@@ -1,5 +1,6 @@
 import AppKit
 import Darwin
+import SQLite3
 import SwiftUI
 
 @main
@@ -19,6 +20,9 @@ struct EditorStyleEngineTests {
         testMarkdownLinks()
         testStaleLinkAttributesAreCleared()
         testLongNotePlanningStaysLocal()
+        testTextDirectionConfiguration()
+        testLegacyArchiveDefaultsToAutomaticDirection()
+        testTextDirectionDatabaseMigration()
 
         guard failures == 0 else {
             fputs("EditorStyleEngineTests: \(failures) failure(s)\n", stderr)
@@ -32,6 +36,123 @@ struct EditorStyleEngineTests {
         guard !condition() else { return }
         failures += 1
         fputs("\(file):\(line): failure: \(message)\n", stderr)
+    }
+
+    private static func testTextDirectionConfiguration() {
+        let source = "English العربية עברית"
+        let tv = makeTextView(source)
+        let selection = NSRange(location: 4, length: 3)
+        tv.setSelectedRange(selection)
+
+        for direction in NoteTextDirection.allCases {
+            NoteTextView.applyTextDirection(direction, to: tv)
+            _ = EditorStyleEngine.apply(
+                to: tv,
+                ranges: [NSRange(location: 0, length: (source as NSString).length)],
+                revealing: nil,
+                ink: .textColor,
+                size: 13.5,
+                markdownEnabled: true,
+                textDirection: direction,
+                bodyFont: { NSFont.systemFont(ofSize: $0) },
+                isCompletedTask: { _ in false })
+            check(tv.baseWritingDirection == direction.writingDirection,
+                  "text view must apply \(direction.title) as its base writing direction")
+            check(tv.alignment == direction.alignment,
+                  "text view must apply \(direction.title) alignment")
+            let paragraph = tv.textStorage?.attribute(.paragraphStyle, at: 0,
+                                                       effectiveRange: nil) as? NSParagraphStyle
+            check(paragraph?.baseWritingDirection == direction.writingDirection,
+                  "restyling must preserve \(direction.title) writing direction")
+            check(paragraph?.alignment == direction.alignment,
+                  "restyling must preserve \(direction.title) paragraph alignment")
+            check(tv.string == source, "changing direction must not mutate note text")
+            check(tv.selectedRange() == selection,
+                  "changing direction must preserve the editor selection")
+        }
+    }
+
+    private struct LegacyStickyNote: Codable {
+        var id = "legacy"
+        var title = ""
+        var body = "مرحبا"
+        var color = 0
+        var colorName = "Lemon"
+        var created = Date(timeIntervalSince1970: 1)
+        var modified = Date(timeIntervalSince1970: 2)
+        var archived = false
+        var order = 0.0
+    }
+
+    private static func testLegacyArchiveDefaultsToAutomaticDirection() {
+        do {
+            let data = try JSONEncoder().encode(LegacyStickyNote())
+            let decoded = try JSONDecoder().decode(StickyNote.self, from: data)
+            check(decoded.textDirection == nil,
+                  "archives created before direction support must still decode")
+            check(decoded.note.textDirection == .automatic,
+                  "legacy archives must import with automatic direction")
+        } catch {
+            check(false, "legacy archive decoding failed: \(error)")
+        }
+    }
+
+    private static func testTextDirectionDatabaseMigration() {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("noty-migration-\(UUID().uuidString)", isDirectory: true)
+        let url = directory.appendingPathComponent("notes.db")
+        do {
+            try FileManager.default.createDirectory(at: directory,
+                                                    withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+
+            var db: OpaquePointer?
+            guard sqlite3_open(url.path, &db) == SQLITE_OK else {
+                check(false, "test database must open")
+                return
+            }
+            let legacySchema = """
+            CREATE TABLE notes (
+              id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', body BLOB NOT NULL,
+              color INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL,
+              modified REAL NOT NULL, archived INTEGER NOT NULL DEFAULT 0,
+              sort_order REAL NOT NULL DEFAULT 0, pinned INTEGER NOT NULL DEFAULT 0
+            );
+            """
+            check(sqlite3_exec(db, legacySchema, nil, nil, nil) == SQLITE_OK,
+                  "legacy schema setup must succeed")
+            sqlite3_close(db)
+
+            let migratedStore = Store(dbURL: url)
+            _ = migratedStore
+
+            db = nil
+            guard sqlite3_open(url.path, &db) == SQLITE_OK else {
+                check(false, "migrated database must reopen")
+                return
+            }
+            defer { sqlite3_close(db) }
+
+            check(sqlite3_exec(db,
+                               "INSERT INTO notes (id,body,created,modified) VALUES ('legacy',X'00',1,1);",
+                               nil, nil, nil) == SQLITE_OK,
+                  "rows written after migration must receive the direction default")
+            var statement: OpaquePointer?
+            guard sqlite3_prepare_v2(db,
+                                     "SELECT text_direction FROM notes WHERE id='legacy';",
+                                     -1, &statement, nil) == SQLITE_OK else {
+                check(false, "migrated direction column must be queryable")
+                return
+            }
+            defer { sqlite3_finalize(statement) }
+            check(sqlite3_step(statement) == SQLITE_ROW,
+                  "migrated database must return the inserted row")
+            let raw = sqlite3_column_text(statement, 0).map { String(cString: $0) }
+            check(raw == NoteTextDirection.automatic.rawValue,
+                  "existing databases must default migrated notes to automatic direction")
+        } catch {
+            check(false, "migration test setup failed: \(error)")
+        }
     }
 
     private static func testSingleCharacterScope() {
