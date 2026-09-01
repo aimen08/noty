@@ -15,6 +15,9 @@ final class QuickCapture: NSObject, NSWindowDelegate {
         // combo is held, and a toggle per repeat flaps the box open and shut.
         // Anything inside the repeat window is the same press.
         guard Date().timeIntervalSince(shownAt) > 0.35 else { return }
+        // Stamp on every accepted toggle, not only in show(): a hold-to-close
+        // otherwise dismisses on the first event and reopens on its autorepeat.
+        shownAt = Date()
         if panel != nil { dismiss() } else { show() }
     }
 
