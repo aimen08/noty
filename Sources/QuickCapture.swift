@@ -40,7 +40,11 @@ final class QuickCapture: NSObject, NSWindowDelegate {
                                      y: vis.minY + vis.height * 0.58))
         }
         panel = p
-        NSApp.activate()
+        // Deliberately no NSApp.activate(): a non-activating panel can take key
+        // input while the app in front stays active. Activating steals focus —
+        // the front window dims, its focus rings drop, and it all snaps back on
+        // dismiss, which reads as UI flashing behind the box.
+        p.contentView?.layoutSubtreeIfNeeded()
         p.makeKeyAndOrderFront(nil)
     }
 
@@ -55,8 +59,6 @@ final class QuickCapture: NSObject, NSWindowDelegate {
     func dismiss() {
         panel?.orderOut(nil)
         panel = nil
-        // The capture box is the only reason the app took focus; give it back.
-        NSApp.deactivate()
     }
 
     /// Clicking anywhere else is a cancel — a capture box that lingers is clutter.
