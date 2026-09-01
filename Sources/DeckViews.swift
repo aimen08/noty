@@ -30,22 +30,29 @@ struct DeckRootView: View {
     }
 
     var body: some View {
-        let h = max(1, deck.panelHeight)
-        let lay = layout(h)
+        // The height comes from the live layout pass, not from a value cached on
+        // the model. When the panel resizes, AppKit relays out the existing view
+        // tree at the new size *before* SwiftUI re-evaluates this body; anything
+        // computed from a stored height is stale for that frame, and the pill
+        // drew with zero padding at the top corner of the screen.
+        GeometryReader { geo in
+            let h = max(1, geo.size.height)
+            let lay = layout(h)
 
-        return ZStack(alignment: onRight ? .topTrailing : .topLeading) {
+            ZStack(alignment: onRight ? .topTrailing : .topLeading) {
 
-                if deck.fanVisible {
+                if deck.fanVisible || h > lay.stackHeight {
                     FanColumn(deck: deck, controller: controller,
                               notes: visible, hiddenCount: showsMoreTab ? hiddenCount : 0,
                               layout: lay, onRight: onRight)
                         .padding(.top, fanTop(lay, panelHeight: h))
-                } else {
-                    PillView(notes: store.active)
-                        .padding(.top, max(0, (h - DeckGeom.pillHeight(noteCount: max(1, store.active.count))) / 2))
-                        .padding(onRight ? .trailing : .leading, 1)
-                        .transition(.opacity)
                 }
+
+                PillView(notes: store.active)
+                    .padding(.top, pillTop(panelHeight: h))
+                    .padding(onRight ? .trailing : .leading, 1)
+                    .opacity(deck.state == .rest ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.20).delay(deck.state == .rest ? 0.12 : 0), value: deck.state)
 
                 // Declared last so it covers the deck, flush to the screen edge.
                 if let id = deck.state.expandedID, let note = store.note(id: id) {
@@ -57,14 +64,24 @@ struct DeckRootView: View {
                         .id(id)
                 }
             }
-        // A ZStack is only as wide as its widest child, so it has to be told to fill
-        // the panel — otherwise the deck sits at the panel's left edge with a dead
-        // gap against the screen. Filling from the parent's proposal (rather than a
-        // measured width) keeps it pinned to the edge through a resize.
-        .frame(maxWidth: .infinity, maxHeight: .infinity,
-               alignment: onRight ? .topTrailing : .topLeading)
+            // A ZStack is only as wide as its widest child, so it has to be told to fill
+            // the panel — otherwise the deck sits at the panel's left edge with a dead
+            // gap against the screen. Filling from the parent's proposal (rather than a
+            // measured width) keeps it pinned to the edge through a resize.
+            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                   alignment: onRight ? .topTrailing : .topLeading)
+        }
         .animation(.spring(response: 0.30, dampingFraction: 0.9), value: deck.fanVisible)
         .animation(.easeInOut(duration: 0.22), value: deck.style)
+    }
+
+    /// Where the pill sits, for any panel height. At rest the panel is exactly the
+    /// pill's height and this is zero; in a full-height panel it lands on the same
+    /// screen position the resting panel occupies, so the pill does not move as the
+    /// panel grows around it or shrinks back to it.
+    private func pillTop(panelHeight h: CGFloat) -> CGFloat {
+        let pillH = DeckGeom.pillHeight(noteCount: max(1, store.active.count))
+        return (1.0 - Settings.deckYRatio) * max(0, h - pillH)
     }
 
     private func fanTop(_ lay: DeckLayout, panelHeight h: CGFloat) -> CGFloat {
@@ -77,6 +94,7 @@ struct DeckRootView: View {
 
     /// Keep the open note level with its own tab, without letting it run off-screen.
     private func editorTop(_ lay: DeckLayout, id: String) -> CGFloat {
+        if let top = deck.openedTop { return top }
         let idx = visible.firstIndex { $0.id == id } ?? 0
         let h = deck.openedHeight
         let fTop = fanTop(lay, panelHeight: lay.panelHeight)
@@ -84,7 +102,9 @@ struct DeckRootView: View {
         let stripCenter = fTop + CGFloat(idx) * lay.pitch + strip / 2
         let ideal = stripCenter - h / 2
         let lowest = max(10, lay.panelHeight - h - 10)
-        return min(max(10, ideal), lowest)
+        let resolved = min(max(10, ideal), lowest)
+        DispatchQueue.main.async { deck.openedTop = resolved }
+        return resolved
     }
 }
 
@@ -132,13 +152,29 @@ struct FanColumn: View {
     let layout: DeckLayout
     let onRight: Bool
 
-    @State private var revealed = false
+    @State private var appeared = false
     @State private var hoverWork: DispatchWorkItem?
+    @State private var previewWork: DispatchWorkItem?
+    @State private var previewNoteID: String?
     @State private var dragID: String?
     @State private var dragTarget: Int = 0
 
+    private var isRevealed: Bool {
+        deck.state != .rest && appeared
+    }
+
+    private var activePreviewNote: Note? {
+        guard let id = previewNoteID, dragID == nil, deck.state.expandedID == nil else { return nil }
+        return notes.first { $0.id == id }
+    }
+
+    private var previewIndex: Int {
+        guard let id = previewNoteID, let idx = notes.firstIndex(where: { $0.id == id }) else { return 0 }
+        return idx
+    }
+
     var body: some View {
-        ZStack(alignment: onRight ? .trailing : .leading) {
+        ZStack(alignment: onRight ? .topTrailing : .topLeading) {
             Group {
                 if deck.showAll && layout.overflows {
                     ScrollView(.vertical, showsIndicators: false) {
@@ -151,11 +187,40 @@ struct FanColumn: View {
                 }
             }
             .overlay(alignment: onRight ? .trailing : .leading) { spine }
+
+            if let previewNote = activePreviewNote {
+                NotePreviewCard(note: previewNote, onRight: onRight, onHoverChanged: { inside in
+                    if inside {
+                        previewWork?.cancel()
+                    } else {
+                        cancelHoverPreview(for: previewNote.id)
+                    }
+                }) {
+                    previewNoteID = nil
+                    open(previewNote)
+                }
+                .padding(.top, CGFloat(previewIndex) * layout.pitch)
+                .padding(onRight ? .trailing : .leading, DeckGeom.tabWidth + 10)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .offset(x: onRight ? 10 : -10)),
+                    removal: .opacity
+                ))
+            }
         }
-        .onAppear { revealed = true }
+        .onAppear {
+            DispatchQueue.main.async { appeared = true }
+        }
         .onChange(of: deck.revealTick) { _, _ in
-            revealed = false
-            DispatchQueue.main.async { revealed = true }
+            appeared = false
+            previewNoteID = nil
+            DispatchQueue.main.async { appeared = true }
+        }
+        .onChange(of: deck.state) { _, newState in
+            if newState == .rest {
+                appeared = false
+                previewNoteID = nil
+                cancelHoverPreview()
+            }
         }
     }
 
@@ -166,19 +231,24 @@ struct FanColumn: View {
     /// explicit `zIndex` per tab is *not* equivalent — it reorders neighbours and
     /// breaks the shingle.
     private var stack: some View {
-        VStack(spacing: layout.spacing) {
+        let total = notes.count + (hiddenCount > 0 ? 1 : 0) + 2
+        return VStack(spacing: layout.spacing) {
             if notes.isEmpty {
                 EmptyTab(height: layout.itemHeight, strip: layout.pitch, onRight: onRight) {
                     (NSApp.delegate as? AppDelegate)?.newNote()
                 }
-                .staged(index: 0, revealed: revealed, onRight: onRight)
+                .staged(index: 0, total: 3, revealed: isRevealed, onRight: onRight)
             }
             ForEach(Array(notes.enumerated()), id: \.element.id) { idx, note in
                 Group {
                     if deck.style == .compact {
                         ChipTab(note: note,
                                 isOpen: deck.state.expandedID == note.id,
-                                onRight: onRight) { open(note) }
+                                onRight: onRight,
+                                action: { open(note) },
+                                onHoverChanged: { inside in
+                                    handleHover(note: note, inside: inside)
+                                })
                     } else {
                         VerticalTab(note: note,
                                     isOpen: deck.state.expandedID == note.id,
@@ -192,6 +262,8 @@ struct FanColumn: View {
                                             dragID = note.id
                                             dragTarget = idx
                                             deck.isDragging = true
+                                            cancelHoverOpen()
+                                            cancelHoverPreview()
                                         }
                                         // Assign only on a real slot change, so the
                                         // column redraws a handful of times per drag
@@ -200,9 +272,7 @@ struct FanColumn: View {
                                         if next != dragTarget { dragTarget = next }
                                     },
                                     onHoverChanged: { inside in
-                                        guard dragID == nil, deck.openOnHover else { return }
-                                        if inside { scheduleHoverOpen(note.id) }
-                                        else { cancelHoverOpen() }
+                                        handleHover(note: note, inside: inside)
                                     },
                                     onDragEnded: { dy in
                                         let to = target(from: idx, dy: dy)
@@ -221,23 +291,40 @@ struct FanColumn: View {
                 // zIndex reorders neighbours and breaks the shingle; leaving the
                 // rest at the default keeps their declaration order intact.
                 .zIndex(dragID == note.id ? 900 : 0)
-                .staged(index: idx, revealed: revealed, onRight: onRight)
+                .staged(index: idx, total: total, revealed: isRevealed, onRight: onRight)
             }
             if hiddenCount > 0 {
                 MoreTab(count: hiddenCount, height: layout.moreHeight, onRight: onRight) {
                     deck.showAll = true
                 }
                 .padding(.top, layout.moreGap - layout.spacing)   // undo the lap
-                .staged(index: notes.count, revealed: revealed, onRight: onRight)
+                .staged(index: notes.count, total: total, revealed: isRevealed, onRight: onRight)
             }
             PlusButton { (NSApp.delegate as? AppDelegate)?.newNote() }
                 .padding(.top, DeckGeom.plusGap - layout.spacing)
-                .staged(index: notes.count + 1, revealed: revealed, onRight: onRight)
+                .staged(index: notes.count + (hiddenCount > 0 ? 1 : 0), total: total, revealed: isRevealed, onRight: onRight)
             CogButton { (NSApp.delegate as? AppDelegate)?.openSettings() }
                 .padding(.top, DeckGeom.cogGap - layout.spacing)
-                .staged(index: notes.count + 2, revealed: revealed, onRight: onRight)
+                .staged(index: notes.count + (hiddenCount > 0 ? 1 : 0) + 1, total: total, revealed: isRevealed, onRight: onRight)
         }
         .frame(width: DeckGeom.tabWidth)
+    }
+
+    private func handleHover(note: Note, inside: Bool) {
+        guard dragID == nil, deck.state.expandedID == nil else {
+            cancelHoverOpen()
+            cancelHoverPreview()
+            return
+        }
+        if inside {
+            // Hover-to-open makes the preview pointless — the note itself is
+            // about to appear — so it wins and the card is skipped entirely.
+            if deck.openOnHover { scheduleHoverOpen(note.id) }
+            else if deck.tabPreview { scheduleHoverPreview(note) }
+        } else {
+            cancelHoverOpen()
+            cancelHoverPreview(for: note.id)
+        }
     }
 
     /// The pointer has to rest on a tab before it opens, or sweeping across the
@@ -246,6 +333,7 @@ struct FanColumn: View {
         hoverWork?.cancel()
         let work = DispatchWorkItem {
             guard deck.openOnHover, dragID == nil, deck.state.expandedID != id else { return }
+            previewNoteID = nil
             controller.expand(id)
         }
         hoverWork = work
@@ -253,6 +341,37 @@ struct FanColumn: View {
     }
 
     private func cancelHoverOpen() { hoverWork?.cancel(); hoverWork = nil }
+
+    private func scheduleHoverPreview(_ note: Note) {
+        previewWork?.cancel()
+        if previewNoteID != nil, previewNoteID != note.id {
+            withAnimation(.easeOut(duration: 0.10)) {
+                previewNoteID = nil
+            }
+        }
+        let work = DispatchWorkItem {
+            guard dragID == nil, deck.state.expandedID == nil, deck.tabPreview,
+                  !deck.openOnHover else { return }
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.85)) {
+                previewNoteID = note.id
+            }
+        }
+        previewWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Settings.tabPreviewDelay, execute: work)
+    }
+
+    private func cancelHoverPreview(for id: String? = nil) {
+        previewWork?.cancel()
+        let work = DispatchWorkItem {
+            if id == nil || previewNoteID == id {
+                withAnimation(.easeOut(duration: 0.12)) {
+                    previewNoteID = nil
+                }
+            }
+        }
+        previewWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
+    }
 
     private var dragFrom: Int? { notes.firstIndex { $0.id == dragID } }
 
@@ -429,6 +548,7 @@ struct ChipTab: View {
     let isOpen: Bool
     let onRight: Bool
     let action: () -> Void
+    var onHoverChanged: (Bool) -> Void = { _ in }
 
     var body: some View {
         Button(action: action) {
@@ -443,8 +563,93 @@ struct ChipTab: View {
         }
         .buttonStyle(TabPressStyle())
         .animation(.spring(response: 0.26, dampingFraction: 0.8), value: isOpen)
+        .onHover { onHoverChanged($0) }
         .noteContextMenu(note)
         .help(note.displayTitle)
+    }
+}
+
+/// Flyout preview card showing a note's title, checklist progress, and body snippet on tab hover.
+struct NotePreviewCard: View {
+    let note: Note
+    let onRight: Bool
+    var onHoverChanged: ((Bool) -> Void)? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(note.palette.dash)
+                        .frame(width: 7, height: 7)
+                    Text(note.displayTitle)
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(note.palette.ink)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    if let prog = note.taskProgress {
+                        Text("\(prog.done)/\(prog.total)")
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(note.palette.ink.opacity(0.65))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(note.palette.ink.opacity(0.12)))
+                    }
+                    if note.pinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 8.5))
+                            .foregroundStyle(note.palette.ink.opacity(0.7))
+                    }
+                }
+
+                let lines = note.body.split(whereSeparator: \.isNewline).map(String.init)
+                let previewLines = Array(lines.dropFirst().prefix(4))
+                if !previewLines.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(Array(previewLines.enumerated()), id: \.offset) { _, line in
+                            if Tasks.isTask(line) {
+                                let isDone = Tasks.marker(of: line) == Tasks.done
+                                HStack(spacing: 4) {
+                                    Image(systemName: isDone ? "checkmark.square.fill" : "square")
+                                        .font(.system(size: 8.5))
+                                        .foregroundStyle(isDone ? Color.secondary : note.palette.ink.opacity(0.75))
+                                    Text(Tasks.stripped(line))
+                                        .font(.system(size: 10.5))
+                                        .strikethrough(isDone)
+                                        .foregroundStyle(isDone ? Color.secondary : note.palette.ink.opacity(0.85))
+                                        .lineLimit(1)
+                                }
+                            } else {
+                                Text(line)
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(note.palette.ink.opacity(0.8))
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                } else if note.body.isEmpty || lines.count <= 1 {
+                    Text("Empty note")
+                        .font(.system(size: 10).italic())
+                        .foregroundStyle(note.palette.ink.opacity(0.45))
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 9)
+            .frame(width: 210, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(note.palette.paper)
+                    .shadow(color: .black.opacity(0.26), radius: 9, x: onRight ? -3 : 3, y: 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(note.palette.ink.opacity(0.12), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { onHoverChanged?($0) }
     }
 }
 
@@ -562,21 +767,25 @@ extension View {
 
 private struct Staged: ViewModifier {
     let index: Int
+    let totalCount: Int
     let revealed: Bool
     let onRight: Bool
 
     func body(content: Content) -> some View {
+        let delay = revealed
+            ? Double(index) * 0.042
+            : Double(max(0, totalCount - 1 - index)) * 0.030
         content
             .offset(x: revealed ? 0 : (onRight ? DeckGeom.tabWidth + 24 : -(DeckGeom.tabWidth + 24)))
             .opacity(revealed ? 1 : 0)
-            .animation(.spring(response: 0.36, dampingFraction: 0.82)
-                        .delay(Double(index) * 0.045), value: revealed)
+            .animation(.spring(response: 0.34, dampingFraction: 0.84)
+                        .delay(delay), value: revealed)
     }
 }
 
 private extension View {
-    func staged(index: Int, revealed: Bool, onRight: Bool) -> some View {
-        modifier(Staged(index: index, revealed: revealed, onRight: onRight))
+    func staged(index: Int, total: Int = 1, revealed: Bool, onRight: Bool) -> some View {
+        modifier(Staged(index: index, totalCount: total, revealed: revealed, onRight: onRight))
     }
 }
 

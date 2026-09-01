@@ -45,6 +45,7 @@ final class DeckModel: ObservableObject {
     @Published var markdown: Bool = Settings.markdownStyling
     @Published var noteSize = Settings.noteSize
     @Published var openOnHover: Bool = Settings.openOnHover
+    @Published var tabPreview: Bool = Settings.tabPreview
     /// Set while a tab is being dragged. The deck must not tidy itself away
     /// mid-drag just because the pointer strayed out of the edge strip.
     @Published var isDragging = false
@@ -52,11 +53,9 @@ final class DeckModel: ObservableObject {
     /// and nothing else — recomputing the position from a height that changes
     /// mid-resize makes the note jump the instant the drag ends.
     @Published var openedHeight: CGFloat = Settings.noteSize.height
-    /// Published by the controller the instant the panel is resized. Reading this
-    /// instead of a GeometryReader matters: the reader reports the *previous* size
-    /// for a frame or two after a resize, and the deck lays out against the wrong
-    /// edge in the meantime.
-    @Published var panelHeight: CGFloat = 0
+    /// The note's top offset at the moment it opened. Anchored so title edits
+    /// and autosaves while typing never make the open note jump or flicker.
+    @Published var openedTop: CGFloat?
 
     func syncPreferences() {
         style = Settings.deckStyle
@@ -67,6 +66,7 @@ final class DeckModel: ObservableObject {
         markdown = Settings.markdownStyling
         noteSize = Settings.noteSize
         openOnHover = Settings.openOnHover
+        tabPreview = Settings.tabPreview
     }
 }
 
@@ -170,7 +170,6 @@ final class DeckController: NSObject {
                            y: vis.minY, width: w, height: vis.height)
         }
         panel.setFrame(frame, display: true, animate: false)
-        if model.panelHeight != frame.height { model.panelHeight = frame.height }
     }
 
     func refreshLevel() {
@@ -205,14 +204,16 @@ final class DeckController: NSObject {
             }
         } else {
             // Let the exit animation play at full size, then shrink the panel.
-            model.state = new
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                self.model.state = new
+            }
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
                 DeckLog.line("shrink fires; state=\(self.model.state)")
                 self.layout()
             }
             shrinkWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
         }
 
         noteActivity()
@@ -388,6 +389,7 @@ final class DeckController: NSObject {
     func expand(_ id: String) {
         noteActivity()
         model.openedHeight = Settings.noteSize.height
+        model.openedTop = nil
         manager?.deckDidActivate(self)
         setState(.expanded(id))
         NSApp.activate()
@@ -397,6 +399,7 @@ final class DeckController: NSObject {
     /// Closing a note steps back to the deck — the tabs stay where they were.
     /// Only leaving the deck entirely puts it back to sleep.
     func collapse() {
+        model.openedTop = nil
         if model.state.expandedID != nil {
             setState(.fan)
             NSApp.deactivate()
