@@ -361,10 +361,14 @@ struct SettingsView: View {
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        VStack(alignment: .leading, spacing: 3) {
-            Toggle("Show preview on hover", isOn: $model.tabPreview)
-            Text("Hover over a tab to peek at its contents without opening it.")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+        // Pointless alongside hover-to-open — the note itself opens — so the
+        // row disappears rather than sitting there doing nothing.
+        if !model.openOnHover {
+            VStack(alignment: .leading, spacing: 3) {
+                Toggle("Show preview on hover", isOn: $model.tabPreview)
+                Text("Hover over a tab to peek at its contents without opening it.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
         }
         VStack(alignment: .leading, spacing: 3) {
             Toggle("Open a note by hovering its tab", isOn: $model.openOnHover)

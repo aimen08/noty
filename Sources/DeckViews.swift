@@ -317,8 +317,10 @@ struct FanColumn: View {
             return
         }
         if inside {
+            // Hover-to-open makes the preview pointless — the note itself is
+            // about to appear — so it wins and the card is skipped entirely.
             if deck.openOnHover { scheduleHoverOpen(note.id) }
-            if deck.tabPreview { scheduleHoverPreview(note) }
+            else if deck.tabPreview { scheduleHoverPreview(note) }
         } else {
             cancelHoverOpen()
             cancelHoverPreview(for: note.id)
@@ -348,7 +350,8 @@ struct FanColumn: View {
             }
         }
         let work = DispatchWorkItem {
-            guard dragID == nil, deck.state.expandedID == nil, deck.tabPreview else { return }
+            guard dragID == nil, deck.state.expandedID == nil, deck.tabPreview,
+                  !deck.openOnHover else { return }
             withAnimation(.spring(response: 0.22, dampingFraction: 0.85)) {
                 previewNoteID = note.id
             }
