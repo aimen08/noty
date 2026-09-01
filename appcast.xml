@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.2.1</title>
-      <pubDate>Tue, 01 Sep 2026 12:00:45 +0000</pubDate>
-      <sparkle:version>68</sparkle:version>
-      <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
+      <title>1.3.0</title>
+      <pubDate>Tue, 01 Sep 2026 12:39:38 +0000</pubDate>
+      <sparkle:version>75</sparkle:version>
+      <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.2.1</p><ul><li><a href="https://github.com/aimen08/noty/pull/13">#13</a> Fix the pill flashing at the top corner when hovering the deck &mdash; @Benj846</li><li><a href="https://github.com/aimen08/noty/pull/15">#15</a> fix: prevent note position jumping and flickering while typing &mdash; @yifjfgup</li><li><a href="https://github.com/aimen08/noty/pull/16">#16</a> Add tab hover preview cards and smooth reverse cascade on fan collapse &mdash; @Pioneer113</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.2.1/Noty-1.2.1.dmg" type="application/octet-stream" sparkle:edSignature="1iiGXmkbAYqI+gvs1+VM2hxC8rffaCez5aEPOA1fvzxrJcYFXU9OvTMgfUW6qNgCazpaK0819JL5RnBv0f+GBQ==" length="1857833" />
+      <description><![CDATA[<p>Noty 1.3.0</p><ul><li>Arm the hot-key repeat window on close as well as open</li><li>One hot-key press is one toggle, however long it is held</li><li>Quick capture no longer activates the app</li><li>Quick capture and the noty:// URL scheme</li><li>Preview card strikes done tasks in the note&#x27;s ink</li><li>Release 1.2.1: update appcast</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.3.0/Noty-1.3.0.dmg" type="application/octet-stream" sparkle:edSignature="nWKwSO7Jd3/6xGwZrKlBrULTTxTkqF53Y+YhtoktYhCATFi8SVjX/NWcGUix42GnprMNE4NKRqGM9aKlWEQTCQ==" length="1872607" />
     </item>
   </channel>
 </rss>
