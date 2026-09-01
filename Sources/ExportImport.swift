@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 // MARK: - Archive format
 
 struct StickyArchive: Codable {
-    var version = 1
+    var version = 2
     var app = "Noty"
     var exported = Date()
     var notes: [StickyNote]
@@ -20,18 +20,21 @@ struct StickyNote: Codable {
     var modified: Date
     var archived: Bool
     var order: Double
+    var textDirection: NoteTextDirection?
 
     init(_ n: Note) {
         id = n.id; title = n.title; body = n.body
         color = n.color; colorName = n.palette.name
         created = n.created; modified = n.modified
         archived = n.archived; order = n.order
+        textDirection = n.textDirection
     }
 
     var note: Note {
         Note(id: id, title: title.isEmpty ? Note.derivedTitle(from: body) : title,
              body: body, color: color, created: created, modified: modified,
-             archived: archived, order: order)
+             archived: archived, textDirection: textDirection ?? .automatic,
+             order: order)
     }
 }
 

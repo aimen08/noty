@@ -103,10 +103,13 @@ enum EditorStyleEngine {
                       ink: NSColor,
                       size: CGFloat,
                       markdownEnabled: Bool,
+                      textDirection: NoteTextDirection = .automatic,
                       bodyFont: @escaping FontProvider,
                       isCompletedTask: @escaping CompletedTaskPredicate) -> [NSRange] {
         let font = bodyFont(size)
-        textView.typingAttributes = [.font: font, .foregroundColor: ink]
+        let paragraphStyle = textDirection.paragraphStyle
+        textView.typingAttributes = [.font: font, .foregroundColor: ink,
+                                     .paragraphStyle: paragraphStyle]
 
         guard let storage = textView.textStorage else { return [] }
         let planned = normalizedStyleRanges(ranges, length: storage.length)
@@ -128,6 +131,7 @@ enum EditorStyleEngine {
             storage.removeAttribute(.link, range: range)
             storage.addAttribute(.foregroundColor, value: ink, range: range)
             storage.addAttribute(.font, value: font, range: range)
+            applyParagraphStyles(to: storage, range: range, direction: textDirection)
 
             let fragment = storage.mutableString.substring(with: range)
             if markdownEnabled {
@@ -148,6 +152,31 @@ enum EditorStyleEngine {
             textView.layoutManager?.invalidateDisplay(forCharacterRange: range)
         }
         return planned
+    }
+
+    /// Apply Automatic independently to every paragraph so mixed-language
+    /// notes can contain both English and Arabic/Hebrew paragraphs naturally.
+    private static func applyParagraphStyles(to storage: NSTextStorage,
+                                             range: NSRange,
+                                             direction: NoteTextDirection) {
+        guard direction == .automatic else {
+            storage.addAttribute(.paragraphStyle, value: direction.paragraphStyle, range: range)
+            return
+        }
+
+        let text = storage.mutableString
+        let upperBound = NSMaxRange(range)
+        var location = range.location
+        while location < upperBound {
+            let paragraph = text.paragraphRange(for: NSRange(location: location, length: 0))
+            let target = NSIntersectionRange(paragraph, range)
+            guard target.length > 0 else { break }
+            let contents = text.substring(with: paragraph)
+            storage.addAttribute(.paragraphStyle,
+                                 value: direction.paragraphStyle(for: contents),
+                                 range: target)
+            location = NSMaxRange(target)
+        }
     }
 
     /// The only characters any of the expressions below can match on. A link

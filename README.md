@@ -121,6 +121,9 @@ import reads that back. All Notes shows a `done/total` count per note.
   `⇧↩` for a new line, `esc` to cancel, click away to dismiss.
 - **All Notes** (`⌥⌘A`) — one window, search across every note body and title,
   with an editable detail pane.
+- **Bidirectional text** — each note can follow its content automatically or be
+  forced left-to-right or right-to-left from the direction menu in its header.
+  The choice also applies in the All Notes editor and survives archive exports.
 - **Multi-display & relocation** — show the deck on all displays, only the main
   screen, or a specific monitor. Hold `⌥ Option` and drag the pill to dock it to
   any edge, height, or display. Displays are tracked by `CGDirectDisplayID`, so
