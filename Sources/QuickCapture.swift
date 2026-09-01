@@ -8,8 +8,13 @@ import Carbon.HIToolbox
 final class QuickCapture: NSObject, NSWindowDelegate {
     static let shared = QuickCapture()
     private var panel: NSPanel?
+    private var shownAt = Date.distantPast
 
     func toggle() {
+        // Carbon delivers a fresh hot-key event for every autorepeat while the
+        // combo is held, and a toggle per repeat flaps the box open and shut.
+        // Anything inside the repeat window is the same press.
+        guard Date().timeIntervalSince(shownAt) > 0.35 else { return }
         if panel != nil { dismiss() } else { show() }
     }
 
@@ -40,6 +45,7 @@ final class QuickCapture: NSObject, NSWindowDelegate {
                                      y: vis.minY + vis.height * 0.58))
         }
         panel = p
+        shownAt = Date()
         // Deliberately no NSApp.activate(): a non-activating panel can take key
         // input while the app in front stays active. Activating steals focus —
         // the front window dims, its focus rings drop, and it all snaps back on
@@ -61,8 +67,17 @@ final class QuickCapture: NSObject, NSWindowDelegate {
         panel = nil
     }
 
-    /// Clicking anywhere else is a cancel — a capture box that lingers is clutter.
-    func windowDidResignKey(_ notification: Notification) { dismiss() }
+    /// Clicking anywhere else is a cancel — a capture box that lingers is
+    /// clutter. But key status can bounce for an instant right after the panel
+    /// opens while the hot-key's own release is still being processed by the
+    /// app in front; inside that window, take key back instead of dying.
+    func windowDidResignKey(_ notification: Notification) {
+        if Date().timeIntervalSince(shownAt) < 0.35 {
+            panel?.makeKeyAndOrderFront(nil)
+        } else {
+            dismiss()
+        }
+    }
 }
 
 /// Borderless panels refuse key status by default, and a capture box that
