@@ -52,6 +52,9 @@ final class DeckModel: ObservableObject {
     /// and nothing else — recomputing the position from a height that changes
     /// mid-resize makes the note jump the instant the drag ends.
     @Published var openedHeight: CGFloat = Settings.noteSize.height
+    /// The note's top offset at the moment it opened. Anchored so title edits
+    /// and autosaves while typing never make the open note jump or flicker.
+    @Published var openedTop: CGFloat?
     /// Published by the controller the instant the panel is resized. Reading this
     /// instead of a GeometryReader matters: the reader reports the *previous* size
     /// for a frame or two after a resize, and the deck lays out against the wrong
@@ -388,6 +391,7 @@ final class DeckController: NSObject {
     func expand(_ id: String) {
         noteActivity()
         model.openedHeight = Settings.noteSize.height
+        model.openedTop = nil
         manager?.deckDidActivate(self)
         setState(.expanded(id))
         NSApp.activate()
@@ -397,6 +401,7 @@ final class DeckController: NSObject {
     /// Closing a note steps back to the deck — the tabs stay where they were.
     /// Only leaving the deck entirely puts it back to sleep.
     func collapse() {
+        model.openedTop = nil
         if model.state.expandedID != nil {
             setState(.fan)
             NSApp.deactivate()

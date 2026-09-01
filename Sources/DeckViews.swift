@@ -77,6 +77,7 @@ struct DeckRootView: View {
 
     /// Keep the open note level with its own tab, without letting it run off-screen.
     private func editorTop(_ lay: DeckLayout, id: String) -> CGFloat {
+        if let top = deck.openedTop { return top }
         let idx = visible.firstIndex { $0.id == id } ?? 0
         let h = deck.openedHeight
         let fTop = fanTop(lay, panelHeight: lay.panelHeight)
@@ -84,7 +85,9 @@ struct DeckRootView: View {
         let stripCenter = fTop + CGFloat(idx) * lay.pitch + strip / 2
         let ideal = stripCenter - h / 2
         let lowest = max(10, lay.panelHeight - h - 10)
-        return min(max(10, ideal), lowest)
+        let resolved = min(max(10, ideal), lowest)
+        DispatchQueue.main.async { deck.openedTop = resolved }
+        return resolved
     }
 }
 
