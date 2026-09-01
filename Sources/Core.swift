@@ -164,6 +164,95 @@ enum Ink {
 
 // MARK: - Model
 
+enum NoteTextDirection: String, Codable, CaseIterable, Identifiable {
+    case automatic
+    case leftToRight
+    case rightToLeft
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .automatic:   "Automatic"
+        case .leftToRight: "Left to Right"
+        case .rightToLeft: "Right to Left"
+        }
+    }
+
+    var symbol: String? {
+        switch self {
+        case .automatic:   nil
+        case .leftToRight: "text.alignleft"
+        case .rightToLeft: "text.alignright"
+        }
+    }
+
+    var writingDirection: NSWritingDirection {
+        switch self {
+        case .automatic:   .natural
+        case .leftToRight: .leftToRight
+        case .rightToLeft: .rightToLeft
+        }
+    }
+
+    var alignment: NSTextAlignment {
+        switch self {
+        case .automatic:   .natural
+        case .leftToRight: .left
+        case .rightToLeft: .right
+        }
+    }
+
+    var paragraphStyle: NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.baseWritingDirection = writingDirection
+        style.alignment = alignment
+        return style
+    }
+
+    /// Resolve Automatic from the first strong character in a paragraph.
+    /// AppKit's `.natural` alignment follows the app's locale on macOS rather
+    /// than reliably aligning each paragraph from its contents, so the editor
+    /// stores an explicit paragraph direction after inspecting the text.
+    func paragraphStyle(for paragraph: String) -> NSParagraphStyle {
+        guard self == .automatic else { return paragraphStyle }
+        let direction = Self.firstStrongDirection(in: paragraph) ?? .leftToRight
+        let style = NSMutableParagraphStyle()
+        style.baseWritingDirection = direction
+        style.alignment = direction == .rightToLeft ? .right : .left
+        return style
+    }
+
+    static func firstStrongDirection(in text: String) -> NSWritingDirection? {
+        for scalar in text.unicodeScalars {
+            switch scalar.value {
+            case 0x200E: return .leftToRight  // LEFT-TO-RIGHT MARK
+            case 0x061C, 0x200F: return .rightToLeft // ARABIC/RIGHT-TO-LEFT MARK
+            default: break
+            }
+
+            // Punctuation, whitespace, emoji, combining marks, and digits are
+            // neutral here; they must not decide the paragraph's direction.
+            guard scalar.properties.isAlphabetic else { continue }
+            return Self.isRightToLeftLetter(scalar.value) ? .rightToLeft : .leftToRight
+        }
+        return nil
+    }
+
+    private static func isRightToLeftLetter(_ value: UInt32) -> Bool {
+        switch value {
+        case 0x0590...0x08FF,   // Hebrew, Arabic, Syriac, Thaana, N'Ko, etc.
+             0xFB1D...0xFDFF,   // Hebrew and Arabic presentation forms
+             0xFE70...0xFEFF,   // Arabic presentation forms B
+             0x10800...0x10FFF, // historic right-to-left scripts
+             0x1E800...0x1EEFF: // Mende, Adlam, Arabic mathematical letters
+            true
+        default:
+            false
+        }
+    }
+}
+
 struct Note: Identifiable, Hashable {
     var id: String = UUID().uuidString
     var title: String = ""
@@ -173,6 +262,7 @@ struct Note: Identifiable, Hashable {
     var modified: Date = Date()
     var archived: Bool = false
     var pinned: Bool = false
+    var textDirection: NoteTextDirection = .automatic
     var order: Double = 0
 
     var palette: NoteColor { NoteColor.at(color) }

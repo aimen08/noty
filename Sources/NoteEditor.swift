@@ -205,6 +205,7 @@ struct NoteTextView: NSViewRepresentable {
     var autofocus: Bool
     var fontSize: CGFloat = 13.5
     var markdownEnabled: Bool = Settings.markdownStyling
+    var textDirection: NoteTextDirection = .automatic
     /// Everything that affects how the text is drawn, as one cheap value. The
     /// alternative — comparing a freshly built NSColor and NSFont — is not
     /// reliably equal, so a full restyle ran on every re-render.
@@ -256,7 +257,6 @@ struct NoteTextView: NSViewRepresentable {
         tv.linkTextAttributes = [.underlineStyle: NSUnderlineStyle.single.rawValue,
                                  .cursor: NSCursor.pointingHand]
         tv.string = text
-
         scroll.documentView = tv
         bridge.textView = tv
         let activeLine = EditorStyleEngine.lineRange(
@@ -266,7 +266,9 @@ struct NoteTextView: NSViewRepresentable {
                          revealing: activeLine,
                          ink: ink,
                          size: fontSize,
-                         markdownEnabled: markdownEnabled)
+                         markdownEnabled: markdownEnabled,
+                         textDirection: textDirection)
+        Self.applyTextDirection(textDirection, to: tv)
         context.coordinator.attach(to: tv)
         if autofocus {
             DispatchQueue.main.async { tv.window?.makeFirstResponder(tv) }
@@ -278,6 +280,7 @@ struct NoteTextView: NSViewRepresentable {
         guard let tv = scroll.documentView as? NSTextView else { return }
         context.coordinator.parent = self
         context.coordinator.synchronize(tv)
+        Self.applyTextDirection(textDirection, to: tv)
         if bridge.textView !== tv { bridge.textView = tv }
     }
 
@@ -287,19 +290,31 @@ struct NoteTextView: NSViewRepresentable {
         tv.textStorage?.delegate = nil
     }
 
+    static func applyTextDirection(_ direction: NoteTextDirection, to textView: NSTextView) {
+        // Automatic is applied per paragraph by EditorStyleEngine. Assigning
+        // NSTextView.alignment/baseWritingDirection here would rewrite every
+        // paragraph back to AppKit's locale-based `.natural` alignment after
+        // the engine had resolved its first strong character.
+        guard direction != .automatic else { return }
+        textView.baseWritingDirection = direction.writingDirection
+        textView.alignment = direction.alignment
+    }
+
     @discardableResult
     private static func applyStyles(to tv: NSTextView,
                                     ranges: [NSRange],
                                     revealing activeLine: NSRange?,
                                     ink: NSColor,
                                     size: CGFloat,
-                                    markdownEnabled: Bool) -> [NSRange] {
+                                    markdownEnabled: Bool,
+                                    textDirection: NoteTextDirection) -> [NSRange] {
         EditorStyleEngine.apply(to: tv,
                                 ranges: ranges,
                                 revealing: activeLine,
                                 ink: ink,
                                 size: size,
                                 markdownEnabled: markdownEnabled,
+                                textDirection: textDirection,
                                 bodyFont: bodyFont,
                                 isCompletedTask: { Tasks.marker(of: $0) == Tasks.done })
     }
@@ -415,7 +430,8 @@ struct NoteTextView: NSViewRepresentable {
                                      revealing: line,
                                      ink: parent.ink,
                                      size: parent.fontSize,
-                                     markdownEnabled: parent.markdownEnabled)
+                                     markdownEnabled: parent.markdownEnabled,
+                                     textDirection: parent.textDirection)
             isApplyingStyles = false
             lastLine = line
             if invalidateCursors { tv.window?.invalidateCursorRects(for: tv) }
@@ -438,7 +454,8 @@ struct NoteTextView: NSViewRepresentable {
                                      revealing: line,
                                      ink: parent.ink,
                                      size: parent.fontSize,
-                                     markdownEnabled: parent.markdownEnabled)
+                                     markdownEnabled: parent.markdownEnabled,
+                                     textDirection: parent.textDirection)
             isApplyingStyles = false
 
             edits.clear()
@@ -457,11 +474,15 @@ struct NoteTextView: NSViewRepresentable {
         }
 
         private func configurationChanged() -> Bool {
-            appliedStyle != parent.styleToken
+            appliedStyle != configurationToken
         }
 
         private func rememberConfiguration() {
-            appliedStyle = parent.styleToken
+            appliedStyle = configurationToken
+        }
+
+        private var configurationToken: String {
+            "\(parent.styleToken)|\(parent.textDirection.rawValue)"
         }
 
         private func clamped(_ selection: NSRange, to length: Int) -> NSRange {
@@ -496,6 +517,51 @@ struct NoteTextView: NSViewRepresentable {
 }
 
 // MARK: - Editor
+
+struct NoteTextDirectionLabel: View {
+    let direction: NoteTextDirection
+    let foreground: Color
+
+    var body: some View {
+        Group {
+            if let symbol = direction.symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+            } else {
+                Text("Auto")
+                    .font(.system(size: 9.5, weight: .semibold))
+            }
+        }
+        .foregroundStyle(foreground)
+        .frame(width: direction == .automatic ? 27 : 18, height: 18)
+        .contentShape(Rectangle())
+    }
+}
+
+struct NoteTextDirectionMenu: View {
+    let direction: NoteTextDirection
+    let foreground: Color
+    let select: (NoteTextDirection) -> Void
+
+    var body: some View {
+        Menu {
+            ForEach(NoteTextDirection.allCases) { option in
+                Button(option == direction ? "✓ \(option.title)" : option.title) {
+                    select(option)
+                }
+            }
+        } label: {
+            NoteTextDirectionLabel(direction: direction, foreground: foreground)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        // Borderless menus use the control tint for their label on macOS,
+        // overriding the label's foreground style (most visibly for "Auto").
+        .tint(foreground)
+        .fixedSize()
+        .help("Text direction: \(direction.title)")
+    }
+}
 
 struct NoteEditorView: View {
     let note: Note
@@ -547,6 +613,7 @@ struct NoteEditorView: View {
                          bridge: deck.bridge, autofocus: true,
                          fontSize: deck.fontSize,
                          markdownEnabled: deck.markdown,
+                         textDirection: note.textDirection,
                          styleToken: "\(note.color)|\(deck.fontSize)|\(Settings.noteFontName)|\(deck.markdown)")
             footer
         }
@@ -600,6 +667,11 @@ struct NoteEditorView: View {
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(note.pinned ? 0.85 : 0.4))
             .help(note.pinned ? "Unpin — ⌘P" : "Pin so it stays open  ⌘P")
+
+            NoteTextDirectionMenu(direction: note.textDirection,
+                                  foreground: pal.ink.opacity(0.5)) {
+                NoteStore.shared.setTextDirection(id: note.id, direction: $0)
+            }
 
             Button { deck.bridge.toggleTaskLine() } label: {
                 Image(systemName: "checklist")
