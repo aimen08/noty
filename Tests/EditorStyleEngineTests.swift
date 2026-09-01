@@ -56,20 +56,53 @@ struct EditorStyleEngineTests {
                 textDirection: direction,
                 bodyFont: { NSFont.systemFont(ofSize: $0) },
                 isCompletedTask: { _ in false })
-            check(tv.baseWritingDirection == direction.writingDirection,
+            let expectedParagraphDirection: NSWritingDirection =
+                direction == .automatic ? .leftToRight : direction.writingDirection
+            let expectedParagraphAlignment: NSTextAlignment =
+                direction == .automatic ? .left : direction.alignment
+            check(tv.baseWritingDirection == expectedParagraphDirection,
                   "text view must apply \(direction.title) as its base writing direction")
-            check(tv.alignment == direction.alignment,
+            check(tv.alignment == expectedParagraphAlignment,
                   "text view must apply \(direction.title) alignment")
             let paragraph = tv.textStorage?.attribute(.paragraphStyle, at: 0,
                                                        effectiveRange: nil) as? NSParagraphStyle
-            check(paragraph?.baseWritingDirection == direction.writingDirection,
+            check(paragraph?.baseWritingDirection == expectedParagraphDirection,
                   "restyling must preserve \(direction.title) writing direction")
-            check(paragraph?.alignment == direction.alignment,
+            check(paragraph?.alignment == expectedParagraphAlignment,
                   "restyling must preserve \(direction.title) paragraph alignment")
             check(tv.string == source, "changing direction must not mutate note text")
             check(tv.selectedRange() == selection,
                   "changing direction must preserve the editor selection")
         }
+
+        let mixedParagraphs = "  123 مرحبا بالعالم\n... Hello world\n# שלום עולם"
+        let mixed = makeTextView(mixedParagraphs)
+        _ = EditorStyleEngine.apply(
+            to: mixed,
+            ranges: [NSRange(location: 0, length: (mixedParagraphs as NSString).length)],
+            revealing: nil,
+            ink: .textColor,
+            size: 13.5,
+            markdownEnabled: true,
+            textDirection: .automatic,
+            bodyFont: { NSFont.systemFont(ofSize: $0) },
+            isCompletedTask: { _ in false })
+
+        let ns = mixedParagraphs as NSString
+        let arabic = mixed.textStorage?.attribute(.paragraphStyle, at: 0,
+                                                   effectiveRange: nil) as? NSParagraphStyle
+        let englishLocation = ns.range(of: "Hello").location
+        let english = mixed.textStorage?.attribute(.paragraphStyle, at: englishLocation,
+                                                    effectiveRange: nil) as? NSParagraphStyle
+        let hebrewLocation = ns.range(of: "שלום").location
+        let hebrew = mixed.textStorage?.attribute(.paragraphStyle, at: hebrewLocation,
+                                                   effectiveRange: nil) as? NSParagraphStyle
+        check(arabic?.baseWritingDirection == .rightToLeft && arabic?.alignment == .right,
+              "Automatic must resolve an Arabic paragraph from its first strong character")
+        check(english?.baseWritingDirection == .leftToRight && english?.alignment == .left,
+              "Automatic must resolve an English paragraph from its first strong character")
+        check(hebrew?.baseWritingDirection == .rightToLeft && hebrew?.alignment == .right,
+              "Automatic must resolve a Hebrew paragraph after neutral Markdown punctuation")
     }
 
     private struct LegacyStickyNote: Codable {

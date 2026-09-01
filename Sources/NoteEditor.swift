@@ -550,6 +550,9 @@ struct NoteTextDirectionMenu: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
+        // Borderless menus use the control tint for their label on macOS,
+        // overriding the label's foreground style (most visibly for "Auto").
+        .tint(foreground)
         .fixedSize()
         .help("Text direction: \(direction.title)")
     }
@@ -661,7 +664,7 @@ struct NoteEditorView: View {
             .help(note.pinned ? "Unpin — ⌘P" : "Pin so it stays open  ⌘P")
 
             NoteTextDirectionMenu(direction: note.textDirection,
-                                  foreground: pal.ink.opacity(0.72)) {
+                                  foreground: pal.ink.opacity(0.5)) {
                 NoteStore.shared.setTextDirection(id: note.id, direction: $0)
             }
 
