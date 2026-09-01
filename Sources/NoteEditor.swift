@@ -291,6 +291,11 @@ struct NoteTextView: NSViewRepresentable {
     }
 
     static func applyTextDirection(_ direction: NoteTextDirection, to textView: NSTextView) {
+        // Automatic is applied per paragraph by EditorStyleEngine. Assigning
+        // NSTextView.alignment/baseWritingDirection here would rewrite every
+        // paragraph back to AppKit's locale-based `.natural` alignment after
+        // the engine had resolved its first strong character.
+        guard direction != .automatic else { return }
         textView.baseWritingDirection = direction.writingDirection
         textView.alignment = direction.alignment
     }

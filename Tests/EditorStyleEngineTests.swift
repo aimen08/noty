@@ -88,6 +88,11 @@ struct EditorStyleEngineTests {
             bodyFont: { NSFont.systemFont(ofSize: $0) },
             isCompletedTask: { _ in false })
 
+        // The live wrapper applies this after the initial style pass. Automatic
+        // must leave the per-paragraph results intact rather than replacing
+        // them with NSTextView's locale-based natural alignment.
+        NoteTextView.applyTextDirection(.automatic, to: mixed)
+
         let ns = mixedParagraphs as NSString
         let arabic = mixed.textStorage?.attribute(.paragraphStyle, at: 0,
                                                    effectiveRange: nil) as? NSParagraphStyle
