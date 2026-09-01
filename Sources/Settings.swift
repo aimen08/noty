@@ -89,6 +89,10 @@ enum Settings {
         get { shortcut("scAllNotes", default: Shortcut(keyCode: 0, modifiers: 2048 | 256)) }
         set { setShortcut("scAllNotes", newValue) }
     }
+    static var scCapture: Shortcut {
+        get { shortcut("scCapture", default: Shortcut(keyCode: 49, modifiers: 512 | 256)) }  // ⇧⌘Space
+        set { setShortcut("scCapture", newValue) }
+    }
     static var scArchive: Shortcut {
         get { shortcut("scArchive", default: Shortcut(keyCode: 37, modifiers: 2048 | 256)) }
         set { setShortcut("scArchive", newValue) }
