@@ -179,9 +179,9 @@ enum NoteTextDirection: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var symbol: String {
+    var symbol: String? {
         switch self {
-        case .automatic:   "textformat"
+        case .automatic:   nil
         case .leftToRight: "text.alignleft"
         case .rightToLeft: "text.alignright"
         }

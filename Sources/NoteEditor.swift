@@ -513,8 +513,29 @@ struct NoteTextView: NSViewRepresentable {
 
 // MARK: - Editor
 
+struct NoteTextDirectionLabel: View {
+    let direction: NoteTextDirection
+    let foreground: Color
+
+    var body: some View {
+        Group {
+            if let symbol = direction.symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+            } else {
+                Text("Auto")
+                    .font(.system(size: 9.5, weight: .semibold))
+            }
+        }
+        .foregroundStyle(foreground)
+        .frame(width: direction == .automatic ? 27 : 18, height: 18)
+        .contentShape(Rectangle())
+    }
+}
+
 struct NoteTextDirectionMenu: View {
     let direction: NoteTextDirection
+    let foreground: Color
     let select: (NoteTextDirection) -> Void
 
     var body: some View {
@@ -525,10 +546,7 @@ struct NoteTextDirectionMenu: View {
                 }
             }
         } label: {
-            Image(systemName: direction.symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 18, height: 18)
-                .contentShape(Rectangle())
+            NoteTextDirectionLabel(direction: direction, foreground: foreground)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -642,10 +660,10 @@ struct NoteEditorView: View {
             .foregroundStyle(pal.ink.opacity(note.pinned ? 0.85 : 0.4))
             .help(note.pinned ? "Unpin — ⌘P" : "Pin so it stays open  ⌘P")
 
-            NoteTextDirectionMenu(direction: note.textDirection) {
+            NoteTextDirectionMenu(direction: note.textDirection,
+                                  foreground: pal.ink.opacity(0.72)) {
                 NoteStore.shared.setTextDirection(id: note.id, direction: $0)
             }
-            .foregroundStyle(pal.ink.opacity(0.5))
 
             Button { deck.bridge.toggleTaskLine() } label: {
                 Image(systemName: "checklist")
