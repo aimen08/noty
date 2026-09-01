@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.2.0</title>
-      <pubDate>Mon, 31 Aug 2026 23:02:30 +0000</pubDate>
-      <sparkle:version>57</sparkle:version>
-      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+      <title>1.2.1</title>
+      <pubDate>Tue, 01 Sep 2026 12:00:45 +0000</pubDate>
+      <sparkle:version>68</sparkle:version>
+      <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.2.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/2">#2</a> 修复中文输入法输入内容丢失 &mdash; @a835100635</li><li><a href="https://github.com/aimen08/noty/pull/6">#6</a> Let the deck stay fanned out instead of folding back to the pill &mdash; @hdob-macko</li><li><a href="https://github.com/aimen08/noty/pull/7">#7</a> Add a deck size preference so the tabs can be scaled &mdash; @hdob-macko</li><li><a href="https://github.com/aimen08/noty/pull/8">#8</a> Improve editor input performance with incremental styling &mdash; @Bazingabc</li><li><a href="https://github.com/aimen08/noty/pull/10">#10</a> Allow relocating the deck across displays and edges with Option-drag (fixes #4) &mdash; @Pioneer113</li></ul><p>Thanks to @speech115.</p>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.2.0/Noty-1.2.0.dmg" type="application/octet-stream" sparkle:edSignature="zhRdRm3pBvWhgG3xFCy7ged8GGPXykRUs00mhIkDg6dXj8d8QJxMg+uDbp2LaiECLOWTFDh2+nHItVZZYv5QCQ==" length="1830709" />
+      <description><![CDATA[<p>Noty 1.2.1</p><ul><li><a href="https://github.com/aimen08/noty/pull/13">#13</a> Fix the pill flashing at the top corner when hovering the deck &mdash; @Benj846</li><li><a href="https://github.com/aimen08/noty/pull/15">#15</a> fix: prevent note position jumping and flickering while typing &mdash; @yifjfgup</li><li><a href="https://github.com/aimen08/noty/pull/16">#16</a> Add tab hover preview cards and smooth reverse cascade on fan collapse &mdash; @Pioneer113</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.2.1/Noty-1.2.1.dmg" type="application/octet-stream" sparkle:edSignature="1iiGXmkbAYqI+gvs1+VM2hxC8rffaCez5aEPOA1fvzxrJcYFXU9OvTMgfUW6qNgCazpaK0819JL5RnBv0f+GBQ==" length="1857833" />
     </item>
   </channel>
 </rss>
