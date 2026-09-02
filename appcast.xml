@@ -12,7 +12,7 @@
       <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <description><![CDATA[<p>Noty 1.5.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/23">#23</a> Add localization for English and Simplified Chinese with language switching &mdash; @chenlongapps</li><li><a href="https://github.com/aimen08/noty/pull/24">#24</a> Build universal macOS binaries for Intel and Apple Silicon &mdash; @michelemadonna</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/19">#19</a> [Feature]: Hide after a certain amount of time &mdash; requested by @Zvzdov</li><li><a href="https://github.com/aimen08/noty/issues/21">#21</a> Feature ideas: free-floating notes, one-click insert, and per-app notes &mdash; requested by @smart-z</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.5.0/Noty-1.5.0.dmg" type="application/octet-stream" sparkle:edSignature="jxctF7aI6H4Xsy8ZnbrvMRytdPOzvaIWC0sGCSvatdPtjulQ0lJuxEqePQCTZR6jI2cBY4/T3lLgNqzx3yLdDQ==" length="1943881" />
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.5.0/Noty.dmg" type="application/octet-stream" sparkle:edSignature="jxctF7aI6H4Xsy8ZnbrvMRytdPOzvaIWC0sGCSvatdPtjulQ0lJuxEqePQCTZR6jI2cBY4/T3lLgNqzx3yLdDQ==" length="1943881" />
     </item>
   </channel>
 </rss>
