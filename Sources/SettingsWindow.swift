@@ -340,7 +340,7 @@ struct SettingsView: View {
                     ForEach(model.screens, id: \.self) { s in
                         if let id = (s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value {
                             let name = s.localizedName
-                            let title = s == NSScreen.main ? "\(name) (Main)" : name
+                            let title = s == NSScreen.main ? "\(name) (\(String(localized: "Main")))" : name
                             Text(title).tag("id:\(id)")
                         }
                     }

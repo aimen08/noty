@@ -44,6 +44,10 @@ assert 'private func pane(_ caption: LocalizedStringKey' in settings_window, \
     "settings pane captions must preserve localization keys"
 assert 'private func row(_ label: LocalizedStringKey' in settings_window, \
     "settings row labels must preserve localization keys"
+assert 'String(localized: "Main")' in settings_window, \
+    "settings display marker must be localized independently"
+assert '"\\(name) (Main)"' not in settings_window, \
+    "settings display names must not embed an untranslated Main marker"
 assert 'String(localized: "Press keys…")' in settings_window, \
     "shortcut recorder status must be localized"
 assert 'String(format: String(localized: "Last checked %@.")' in settings_window, \
@@ -167,6 +171,7 @@ required_settings = {
     "Standard": "标准",
     "Wide": "宽",
     "Very wide": "很宽",
+    "Edge": "边缘",
     "Shortcuts": "快捷键",
     "Deck": "牌组",
     "Notes": "笔记",
