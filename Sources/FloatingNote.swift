@@ -208,12 +208,21 @@ private struct FloatingNoteView: View {
 
     private func header(_ note: Note, _ pal: NoteColor) -> some View {
         HStack(spacing: 8) {
-            Circle().fill(pal.dash).frame(width: 8, height: 8)
-            Text(note.displayTitle)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(pal.ink.opacity(0.92))
-                .lineLimit(1)
-            Spacer(minLength: 6)
+            // Only the title strip drags the window. WindowDragGesture moves
+            // the window under the cursor, so a release still lands inside
+            // whatever button the grab started on — dragging by the pin was
+            // pinning the note, and dragging by the ✕ would have closed it.
+            HStack(spacing: 8) {
+                Circle().fill(pal.dash).frame(width: 8, height: 8)
+                Text(note.displayTitle)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(pal.ink.opacity(0.92))
+                    .lineLimit(1)
+                Spacer(minLength: 6)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .gesture(WindowDragGesture())
             Button { NoteStore.shared.togglePin(id: note.id) } label: {
                 Image(systemName: note.pinned ? "pin.fill" : "pin")
                     .font(.system(size: 11, weight: .semibold))
@@ -236,10 +245,6 @@ private struct FloatingNoteView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 34)
-        .contentShape(Rectangle())
-        // The header is the handle: NSWindow does the dragging natively, which
-        // keeps it smooth and lets it cross displays for free.
-        .gesture(WindowDragGesture())
     }
 
     private func scheduleSave(_ value: String) {
