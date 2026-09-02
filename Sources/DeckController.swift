@@ -528,7 +528,7 @@ final class DeckController: NSObject {
         let styleItem = NSMenuItem(title: String(localized: "Deck style"), action: nil, keyEquivalent: "")
         let styleMenu = NSMenu()
         for s in DeckStyle.allCases {
-            let it = NSMenuItem(title: String(localized: String.LocalizationValue(s.title)), action: #selector(AppDelegate.setDeckStyle(_:)), keyEquivalent: "")
+            let it = NSMenuItem(title: s.title, action: #selector(AppDelegate.setDeckStyle(_:)), keyEquivalent: "")
             it.representedObject = s.rawValue
             it.state = Settings.deckStyle == s ? .on : .off
             styleMenu.addItem(it)
@@ -539,7 +539,7 @@ final class DeckController: NSObject {
         let fontItem = NSMenuItem(title: String(localized: "Note font"), action: nil, keyEquivalent: "")
         let fontMenu = NSMenu()
         for f in Ink.faces {
-            let it = NSMenuItem(title: String(localized: String.LocalizationValue(f.name)), action: #selector(AppDelegate.setNoteFont(_:)),
+            let it = NSMenuItem(title: f.displayName, action: #selector(AppDelegate.setNoteFont(_:)),
                                 keyEquivalent: "")
             it.representedObject = f.body
             it.state = Ink.face.body == f.body ? .on : .off
@@ -551,7 +551,7 @@ final class DeckController: NSObject {
         let textItem = NSMenuItem(title: String(localized: "Text size"), action: nil, keyEquivalent: "")
         let textMenu = NSMenu()
         for entry in Settings.fontSizes {
-            let it = NSMenuItem(title: String(localized: String.LocalizationValue(entry.name)), action: #selector(AppDelegate.setFontSize(_:)),
+            let it = NSMenuItem(title: Settings.displayName(for: entry.name), action: #selector(AppDelegate.setFontSize(_:)),
                                 keyEquivalent: "")
             it.representedObject = entry.size
             it.state = abs(Settings.noteFontSize - entry.size) < 0.01 ? .on : .off
@@ -563,7 +563,7 @@ final class DeckController: NSObject {
         let sizeItem = NSMenuItem(title: String(localized: "Deck size"), action: nil, keyEquivalent: "")
         let sizeMenu = NSMenu()
         for entry in Settings.deckSizes {
-            let it = NSMenuItem(title: String(localized: String.LocalizationValue(entry.name)), action: #selector(AppDelegate.setDeckScale(_:)),
+            let it = NSMenuItem(title: Settings.displayName(for: entry.name), action: #selector(AppDelegate.setDeckScale(_:)),
                                 keyEquivalent: "")
             it.representedObject = entry.scale
             it.state = abs(Settings.deckScale - entry.scale) < 0.01 ? .on : .off

@@ -24,6 +24,32 @@ assert "String.LocalizationValue(title)" not in deck_controller, \
     "system display names must not be sent through localization lookup"
 assert re.search(r"NSMenuItem\(title: title, action:", deck_controller), \
     "display menu must pass the composed title directly to NSMenuItem"
+assert "String.LocalizationValue(s.title)" not in deck_controller, \
+    "already localized deck style titles must not be looked up twice"
+assert "String.LocalizationValue(f.name)" not in deck_controller, \
+    "font display names must use the localized display property"
+
+core = (root / "Sources" / "Core.swift").read_text()
+deck_panel = (root / "Sources" / "DeckPanel.swift").read_text()
+settings = (root / "Sources" / "Settings.swift").read_text()
+settings_window = (root / "Sources" / "SettingsWindow.swift").read_text()
+shortcut = (root / "Sources" / "Shortcut.swift").read_text()
+assert "var displayName: String" in core, "palette and font faces need localized display properties"
+assert 'String(localized: "New note")' in core, "empty note titles must use a localized fallback"
+assert 'String(localized: "just now")' in core, "recent timestamps must localize just now"
+assert 'String(localized: "Labelled tabs")' in deck_panel, "deck style titles must be localized"
+assert 'static let fontSizes' in settings and 'static let edgeWidths' in settings, \
+    "settings source values must remain stable constants"
+assert 'private func pane(_ caption: LocalizedStringKey' in settings_window, \
+    "settings pane captions must preserve localization keys"
+assert 'private func row(_ label: LocalizedStringKey' in settings_window, \
+    "settings row labels must preserve localization keys"
+assert 'String(localized: "Press keys…")' in settings_window, \
+    "shortcut recorder status must be localized"
+assert 'String(format: String(localized: "Last checked %@.")' in settings_window, \
+    "update status must format a localized complete sentence"
+assert 'String(localized: "Space")' in shortcut, "space shortcut label must be localized"
+assert 'String(localized: "key %d")' in shortcut, "unknown shortcut labels must be localized"
 
 def keys(locale, name):
     source = root / "Resources" / f"{locale}.lproj" / name
@@ -123,6 +149,40 @@ dynamic_menu_values = {
 for key, (expected_en, expected_zh) in dynamic_menu_values.items():
     assert en[key] == expected_en, f"unexpected English dynamic menu value for {key!r}"
     assert zh[key] == expected_zh, f"unexpected zh-Hans dynamic menu value for {key!r}"
+
+required_settings = {
+    "Automatic": "自动",
+    "Left to Right": "从左到右",
+    "Right to Left": "从右到左",
+    "Lemon": "柠檬",
+    "Peach": "蜜桃",
+    "Rose": "玫瑰",
+    "Lilac": "丁香紫",
+    "Sky": "天空蓝",
+    "Mint": "薄荷绿",
+    "Sand": "沙色",
+    "Slate": "石板灰",
+    "Huge": "超大",
+    "Narrow": "窄",
+    "Standard": "标准",
+    "Wide": "宽",
+    "Very wide": "很宽",
+    "Shortcuts": "快捷键",
+    "Deck": "牌组",
+    "Notes": "笔记",
+    "Updates": "更新",
+    "Press keys…": "按下按键…",
+    "Space": "空格",
+    "key %d": "按键 %d",
+    "Last checked %@.": "上次检查时间：%@。",
+    "No check yet.": "尚未检查。",
+    "This build has no Sparkle framework, so it cannot update itself.": "此版本没有 Sparkle 框架，无法自动更新。",
+}
+for key, expected_zh in required_settings.items():
+    assert key in en, f"missing Task 3 key in en: {key}"
+    assert key in zh, f"missing Task 3 key in zh-Hans: {key}"
+    assert en[key] == key, f"English Task 3 value must preserve source text: {key}"
+    assert zh[key] == expected_zh, f"unexpected zh-Hans Task 3 value for {key!r}"
 PY
 
 "$ROOT/build.sh" debug

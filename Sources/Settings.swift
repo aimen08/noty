@@ -5,6 +5,13 @@ import ServiceManagement
 enum Settings {
     private static let d = UserDefaults.standard
 
+    /// Translate a stable source label only when it is presented in the UI.
+    /// These labels are kept in English so settings and archives never persist
+    /// a locale-dependent value.
+    static func displayName(for stableName: String) -> String {
+        String(localized: String.LocalizationValue(stableName))
+    }
+
     static var showOverFullScreen: Bool {
         get { d.object(forKey: "showOverFullScreen") as? Bool ?? false }
         set { d.set(newValue, forKey: "showOverFullScreen") }

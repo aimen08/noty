@@ -65,7 +65,7 @@ final class RecorderView: NSView {
         path.lineWidth = recording ? 2 : 1
         path.stroke()
 
-        let text = recording ? "Press keys…" : shortcut.display
+        let text = recording ? String(localized: "Press keys…") : shortcut.display
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 12, weight: recording ? .regular : .medium),
             .foregroundColor: recording ? NSColor.secondaryLabelColor : NSColor.labelColor,
@@ -184,16 +184,18 @@ final class SettingsModel: ObservableObject {
 
     func refreshUpdateStatus() {
         guard Updater.available else {
-            updateStatus = "This build has no Sparkle framework, so it cannot update itself."
+            updateStatus = String(localized: "This build has no Sparkle framework, so it cannot update itself.")
             return
         }
         guard let last = Updater.shared.lastCheck else {
-            updateStatus = "No check yet."
+            updateStatus = String(localized: "No check yet.")
             return
         }
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
-        updateStatus = "Last checked \(f.localizedString(for: last, relativeTo: Date()))."
+        updateStatus = String(format: String(localized: "Last checked %@."),
+                              locale: .current,
+                              f.localizedString(for: last, relativeTo: Date()))
     }
 
     func checkForUpdatesNow() {
@@ -287,7 +289,7 @@ struct SettingsView: View {
                 shortcutRow("New note", model.scNewNote, "new") { model.scNewNote = $0 }
                 shortcutRow("All Notes", model.scAllNotes, "all") { model.scAllNotes = $0 }
                 shortcutRow("Archive window", model.scArchive, "archive") { model.scArchive = $0 }
-            shortcutRow("Quick capture", model.scCapture, "capture") { model.scCapture = $0 }
+                shortcutRow("Quick capture", model.scCapture, "capture") { model.scCapture = $0 }
                 Spacer(minLength: 0)
             }
             VStack(alignment: .leading, spacing: 7) {
@@ -353,9 +355,12 @@ struct SettingsView: View {
         row("Detection area") {
             VStack(alignment: .leading, spacing: 4) {
                 Picker("", selection: $model.edgeWidth) {
-                    ForEach(Settings.edgeWidths, id: \.width) { Text($0.name).tag($0.width) }
+                    ForEach(Settings.edgeWidths, id: \.width) {
+                        Text(Settings.displayName(for: $0.name)).tag($0.width)
+                    }
                 }.labelsHidden().pickerStyle(.segmented).frame(width: 300)
-                Text("How far from the edge the pointer wakes the deck — \(Int(model.edgeWidth)) pt.")
+                Text(String(format: String(localized: "How far from the edge the pointer wakes the deck — %d pt."),
+                           locale: .current, Int(model.edgeWidth)))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
         }
@@ -390,13 +395,13 @@ struct SettingsView: View {
     private var notesTab: some View {
         row("Font") {
             Picker("", selection: $model.fontName) {
-                ForEach(Ink.faces, id: \.body) { Text($0.name).tag($0.body) }
+                ForEach(Ink.faces, id: \.body) { Text($0.displayName).tag($0.body) }
             }.labelsHidden().frame(width: 200)
         }
         row("Note size") {
             Picker("", selection: $model.noteSizeIndex) {
                 ForEach(Array(Settings.noteSizes.enumerated()), id: \.offset) { i, s in
-                    Text(s.name).tag(i)
+                    Text(Settings.displayName(for: s.name)).tag(i)
                 }
             }
             .labelsHidden().pickerStyle(.segmented).frame(width: 300)
@@ -406,7 +411,7 @@ struct SettingsView: View {
                 Slider(value: $model.fontSize,
                        in: Settings.fontRange.lowerBound...Settings.fontRange.upperBound,
                        step: 0.5).frame(width: 210)
-                Text("\(model.fontSize, specifier: "%.1f") pt")
+                Text(String(format: String(localized: "%.1f pt"), locale: .current, model.fontSize))
                     .font(.system(size: 11).monospacedDigit())
                     .foregroundStyle(.secondary).frame(width: 52, alignment: .leading)
             }
@@ -442,10 +447,7 @@ struct SettingsView: View {
             }
         }
         Divider().padding(.vertical, 4)
-        Text("Fetching appcast.xml is the only network request Noty ever makes — "
-             + "no accounts, no analytics, and nothing about a note leaves the Mac. "
-             + "Every update is checked against the EdDSA public key in the app; one "
-             + "signed by any other key is refused.")
+        Text("Fetching appcast.xml is the only network request Noty ever makes — no accounts, no analytics, and nothing about a note leaves the Mac. Every update is checked against the EdDSA public key in the app; one signed by any other key is refused.")
             .font(.system(size: 11)).foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         Spacer(minLength: 0)
@@ -455,14 +457,15 @@ struct SettingsView: View {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String ?? "?"
         let build = info?["CFBundleVersion"] as? String ?? "?"
-        return "Noty \(short)  (build \(build))"
+        return String(format: String(localized: "Noty %@  (build %@)"),
+                      locale: .current, short, build)
     }
 
     // MARK: pieces
 
     /// One tab. The heading is gone — the tab itself is the heading now — but the
     /// caption earns its line, so it stays.
-    private func pane(_ caption: String,
+    private func pane(_ caption: LocalizedStringKey,
                       @ViewBuilder _ content: () -> some View) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 13) {
@@ -477,13 +480,13 @@ struct SettingsView: View {
         .onAppear { model.refreshUpdateStatus() }
     }
 
-    private func subhead(_ text: String) -> some View {
+    private func subhead(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(.secondary)
     }
 
-    private func row(_ label: String, @ViewBuilder _ content: () -> some View) -> some View {
+    private func row(_ label: LocalizedStringKey, @ViewBuilder _ content: () -> some View) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 14) {
             Text(label).font(.system(size: 12.5))
                 .frame(width: 104, alignment: .leading)
@@ -492,7 +495,7 @@ struct SettingsView: View {
         }
     }
 
-    private func shortcutRow(_ label: String, _ value: Shortcut, _ key: String,
+    private func shortcutRow(_ label: LocalizedStringKey, _ value: Shortcut, _ key: String,
                              bare: Bool = false,
                              _ set: @escaping (Shortcut) -> Void) -> some View {
         HStack(spacing: 10) {

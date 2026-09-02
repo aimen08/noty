@@ -53,6 +53,9 @@ struct NoteColor {
     let dash: Color       // saturated edge dash / colour bar
     let ink: Color        // text colour on paper
 
+    /// Stable source key used by archives; presentation uses the active locale.
+    var displayName: String { String(localized: String.LocalizationValue(name)) }
+
     /// Slightly deeper than a highlighter pastel, so a note reads as paper with
     /// colour in it rather than a tinted white rectangle.
     static let all: [NoteColor] = [
@@ -85,6 +88,9 @@ struct NoteFace {
     let body: String          // PostScript name, "" for the system font
     let tab: String           // heavier cut used on the tab labels
     let bump: CGFloat         // size nudge so faces look the same size as each other
+
+    /// Stable source key / PostScript values remain unchanged in preferences.
+    var displayName: String { String(localized: String.LocalizationValue(name)) }
 }
 
 enum Ink {
@@ -173,9 +179,9 @@ enum NoteTextDirection: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .automatic:   "Automatic"
-        case .leftToRight: "Left to Right"
-        case .rightToLeft: "Right to Left"
+        case .automatic:   String(localized: "Automatic")
+        case .leftToRight: String(localized: "Left to Right")
+        case .rightToLeft: String(localized: "Right to Left")
         }
     }
 
@@ -277,7 +283,7 @@ struct Note: Identifiable, Hashable {
         return clean.count > 60 ? String(clean.prefix(60)) + "…" : clean
     }
 
-    var displayTitle: String { title.isEmpty ? "New note" : title }
+    var displayTitle: String { title.isEmpty ? String(localized: "New note") : title }
 
     /// Completed / total, or nil when the note holds no tasks.
     var taskProgress: (done: Int, total: Int)? {
@@ -363,7 +369,7 @@ enum Fmt {
     }()
 
     static func ago(_ d: Date) -> String {
-        if Date().timeIntervalSince(d) < 60 { return "just now" }
+        if Date().timeIntervalSince(d) < 60 { return String(localized: "just now") }
         return relative.localizedString(for: d, relativeTo: Date())
     }
 }

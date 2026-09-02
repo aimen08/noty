@@ -24,7 +24,7 @@ struct Shortcut: Equatable, Codable {
 
     static func keyName(_ code: UInt32) -> String {
         switch Int(code) {
-        case kVK_Space: return "Space"
+        case kVK_Space: return String(localized: "Space")
         case kVK_Return: return "↩"
         case kVK_Tab: return "⇥"
         case kVK_Escape: return "esc"
@@ -39,7 +39,7 @@ struct Shortcut: Equatable, Codable {
         default: break
         }
         if let s = characters(for: code) { return s.uppercased() }
-        return "key \(code)"
+        return String(format: String(localized: "key %d"), locale: .current, code)
     }
 
     /// Ask the current keyboard layout what an unmodified press produces, so a
