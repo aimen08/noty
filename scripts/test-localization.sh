@@ -11,12 +11,20 @@ done
 
 python3 - "$ROOT" <<'PY'
 import plistlib
+import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 root = Path(sys.argv[1])
+
+deck_controller = (root / "Sources" / "DeckController.swift").read_text()
+assert "String.LocalizationValue(title)" not in deck_controller, \
+    "system display names must not be sent through localization lookup"
+assert re.search(r"NSMenuItem\(title: title, action:", deck_controller), \
+    "display menu must pass the composed title directly to NSMenuItem"
+
 def keys(locale, name):
     source = root / "Resources" / f"{locale}.lproj" / name
     with tempfile.TemporaryDirectory() as directory:
@@ -94,6 +102,27 @@ for key, expected_zh in required_appkit.items():
     assert key in zh, f"missing AppKit key in zh-Hans: {key}"
     assert en[key] == key, f"English AppKit value must preserve source text: {key}"
     assert zh[key] == expected_zh, f"unexpected zh-Hans AppKit value for {key!r}"
+
+dynamic_menu_values = {
+    "System": ("System", "系统"),
+    "Noteworthy": ("Noteworthy", "Noteworthy"),
+    "Bradley Hand": ("Bradley Hand", "Bradley Hand"),
+    "Marker Felt": ("Marker Felt", "Marker Felt"),
+    "Chalkboard": ("Chalkboard", "Chalkboard"),
+    "Avenir Next": ("Avenir Next", "Avenir Next"),
+    "New York": ("New York", "New York"),
+    "Georgia": ("Georgia", "Georgia"),
+    "Menlo": ("Menlo", "Menlo"),
+    "Small": ("Small", "小"),
+    "Medium": ("Medium", "中"),
+    "Large": ("Large", "大"),
+    "Extra Large": ("Extra Large", "超大"),
+    "Default": ("Default", "默认"),
+    "Extra large": ("Extra large", "特大"),
+}
+for key, (expected_en, expected_zh) in dynamic_menu_values.items():
+    assert en[key] == expected_en, f"unexpected English dynamic menu value for {key!r}"
+    assert zh[key] == expected_zh, f"unexpected zh-Hans dynamic menu value for {key!r}"
 PY
 
 "$ROOT/build.sh" debug

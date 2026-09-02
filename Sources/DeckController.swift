@@ -602,7 +602,7 @@ final class DeckController: NSObject {
                 guard let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { continue }
                 let name = screen.localizedName
                 let title = screen == NSScreen.main ? "\(name) (\(String(localized: "Main")))" : name
-                let it = NSMenuItem(title: String(localized: String.LocalizationValue(title)), action: #selector(AppDelegate.setDisplayTarget(_:)), keyEquivalent: "")
+                let it = NSMenuItem(title: title, action: #selector(AppDelegate.setDisplayTarget(_:)), keyEquivalent: "")
                 it.representedObject = "id:\(id)"
                 it.state = Settings.displayTarget == "id:\(id)" ? .on : .off
                 displayMenu.addItem(it)
