@@ -193,7 +193,8 @@ strings ~/Library/Application\ Support/Noty/notes.db | grep "some text from a no
 ## Build
 
 Requires the Swift toolchain from Command Line Tools (**Xcode is not needed**)
-and macOS 15+.
+and macOS 15+. The build produces a universal app for both Intel (`x86_64`)
+and Apple Silicon (`arm64`) Macs.
 
 ```sh
 ./scripts/fetch-sparkle.sh   # once — pulls the Sparkle binary framework
@@ -204,7 +205,8 @@ and macOS 15+.
 open build/Noty.app
 ```
 
-`build.sh` drives `swiftc` directly over `Sources/*.swift`, assembles the
+`build.sh` drives `swiftc` directly over `Sources/*.swift` for both supported
+architectures, combines the resulting binaries with `lipo`, assembles the
 `.app` bundle around `Info.plist`, embeds Sparkle, and signs it.
 
 Sparkle is optional. Without `Sparkle/Sparkle.framework` the app still builds —
