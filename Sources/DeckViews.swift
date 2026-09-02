@@ -51,7 +51,7 @@ struct DeckRootView: View {
                 PillView(notes: store.active)
                     .padding(.top, pillTop(panelHeight: h))
                     .padding(onRight ? .trailing : .leading, 1)
-                    .opacity(deck.state == .rest ? 1 : 0)
+                    .opacity(deck.state == .rest && !deck.pillHidden ? 1 : 0)
                     .animation(.easeInOut(duration: 0.20).delay(deck.state == .rest ? 0.12 : 0), value: deck.state)
 
                 // Declared last so it covers the deck, flush to the screen edge.

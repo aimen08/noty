@@ -37,6 +37,7 @@ final class DeckModel: ObservableObject {
     // Mirrored from Settings so SwiftUI re-renders when a preference flips.
     @Published var style: DeckStyle = Settings.deckStyle
     @Published var alwaysShown: Bool = Settings.deckAlwaysShown
+    @Published var pillHidden: Bool = Settings.deckPillHidden
     /// DeckGeom reads the scale straight from Settings; this mirror exists purely
     /// so a change to it invalidates the views that measure against it.
     @Published var scale: Double = Settings.deckScale
@@ -49,6 +50,10 @@ final class DeckModel: ObservableObject {
     /// Set while a tab is being dragged. The deck must not tidy itself away
     /// mid-drag just because the pointer strayed out of the edge strip.
     @Published var isDragging = false
+    /// The note mid-way off the deck: its in-deck sheet hides while the
+    /// floating panel tracks the pointer, but the view stays in the hierarchy —
+    /// removing it would kill the very drag gesture steering the detach.
+    @Published var detachingID: String?
     /// The note's height at the moment it opened. Its top is anchored from this
     /// and nothing else — recomputing the position from a height that changes
     /// mid-resize makes the note jump the instant the drag ends.
@@ -60,6 +65,7 @@ final class DeckModel: ObservableObject {
     func syncPreferences() {
         style = Settings.deckStyle
         alwaysShown = Settings.deckAlwaysShown
+        pillHidden = Settings.deckPillHidden
         scale = Settings.deckScale
         onLeftEdge = Settings.deckOnLeftEdge
         fontSize = Settings.noteFontSize
@@ -388,6 +394,9 @@ final class DeckController: NSObject {
 
     func expand(_ id: String) {
         noteActivity()
+        // Already floating somewhere on the screen — focus it there instead of
+        // opening the same body in two editors.
+        if FloatingNote.shared.noteID == id { FloatingNote.shared.focus(); return }
         model.openedHeight = Settings.noteSize.height
         model.openedTop = nil
         manager?.deckDidActivate(self)
@@ -415,6 +424,30 @@ final class DeckController: NSObject {
     private var openNoteIsPinned: Bool {
         guard let id = model.state.expandedID else { return false }
         return NoteStore.shared.note(id: id)?.pinned ?? false
+    }
+
+    /// The expanded note crossed the detach threshold: hand it to the floating
+    /// panel at its current on-screen position, so the paper continues under
+    /// the cursor rather than jumping to it.
+    func detachExpandedNote(at pointer: NSPoint) {
+        guard let id = model.state.expandedID else { return }
+        let size = Settings.noteSize
+        let frame = panel.frame
+        let onRight = !Settings.deckOnLeftEdge
+        let top = model.openedTop ?? (frame.height - size.height) / 2
+        let origin = NSPoint(x: onRight ? frame.maxX - size.width : frame.minX,
+                             y: frame.maxY - top - size.height)
+        model.detachingID = id
+        FloatingNote.shared.present(id: id, under: pointer,
+                                    grabOffset: NSPoint(x: pointer.x - origin.x,
+                                                        y: pointer.y - origin.y))
+    }
+
+    /// Mouse released: the note lives on the screen now, the deck steps back.
+    func finishDetach() {
+        FloatingNote.shared.endDrag(cancelled: false)
+        model.detachingID = nil
+        setState(.fan)
     }
 
     /// Dismiss the whole deck, note and tabs together.

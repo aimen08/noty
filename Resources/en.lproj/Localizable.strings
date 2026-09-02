@@ -140,6 +140,8 @@
 "settings.deck.hover_open_help" = "Rest on a tab and it opens, no click needed. Off by default.";
 "settings.deck.hover_preview" = "Show preview on hover";
 "settings.deck.hover_preview_help" = "Hover over a tab to peek at its contents without opening it.";
+"settings.deck.hide_pill" = "Hide the deck completely";
+"settings.deck.hide_pill_help" = "Nothing shows at rest — no pill, no dashes. Slide the pointer to the screen edge to wake the tabs.";
 "settings.deck.keep_open" = "Keep the deck open";
 "settings.deck.keep_open_help" = "Tabs stay on the edge with their labels showing, instead of folding back into the pill when the pointer leaves.";
 "settings.deck.language" = "Language";

@@ -140,6 +140,8 @@
 "settings.deck.hover_open_help" = "指针停在标签上即可打开，无需点按。默认关闭。";
 "settings.deck.hover_preview" = "悬停时显示预览";
 "settings.deck.hover_preview_help" = "将指针悬停在标签上，无需打开即可预览内容。";
+"settings.deck.hide_pill" = "完全隐藏便笺栏";
+"settings.deck.hide_pill_help" = "空闲时不显示任何内容——没有胶囊，也没有色条。将指针移到屏幕边缘即可唤出标签。";
 "settings.deck.keep_open" = "保持便笺栏展开";
 "settings.deck.keep_open_help" = "指针移开后，标签及其文字仍显示在边缘，不会折叠成胶囊。";
 "settings.deck.language" = "语言";

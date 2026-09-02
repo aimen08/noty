@@ -107,6 +107,7 @@ final class SettingsModel: ObservableObject {
     }
     @Published var deckStyle: DeckStyle { didSet { Settings.deckStyle = deckStyle; apply() } }
     @Published var alwaysShown: Bool    { didSet { Settings.deckAlwaysShown = alwaysShown; apply() } }
+    @Published var pillHidden: Bool     { didSet { Settings.deckPillHidden = pillHidden; apply() } }
     @Published var deckScale: Double    { didSet { Settings.deckScale = deckScale; apply() } }
     @Published var onLeftEdge: Bool     { didSet { Settings.deckOnLeftEdge = onLeftEdge; apply() } }
     @Published var displayTarget: String { didSet { Settings.displayTarget = displayTarget; apply() } }
@@ -151,6 +152,7 @@ final class SettingsModel: ObservableObject {
         appLanguage = Settings.appLanguage
         deckStyle = Settings.deckStyle
         alwaysShown = Settings.deckAlwaysShown
+        pillHidden = Settings.deckPillHidden
         deckScale = Settings.deckScale
         onLeftEdge = Settings.deckOnLeftEdge
         displayTarget = Settings.displayTarget
@@ -402,6 +404,12 @@ struct SettingsView: View {
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Toggle(L10n.text("settings.deck.hide_pill"), isOn: $model.pillHidden)
+                        Text(L10n.text("settings.deck.hide_pill_help"))
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
         // Pointless alongside hover-to-open — the note itself opens — so the
         // row disappears rather than sitting there doing nothing.
         if !model.openOnHover {

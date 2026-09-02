@@ -285,6 +285,14 @@ enum Settings {
         set { d.set(newValue, forKey: "deckAlwaysShown") }
     }
 
+    /// Show nothing at all at rest — no pill, no dashes. The invisible edge
+    /// strip still wakes the deck, so the notes are one hover away; they just
+    /// leave the screen entirely alone until asked for.
+    static var deckPillHidden: Bool {
+        get { d.bool(forKey: "deckPillHidden") }
+        set { d.set(newValue, forKey: "deckPillHidden") }
+    }
+
     /// Multiplier on every deck metric — tab width, label type, the lap between
     /// tabs, the chips and the pill. One knob so the deck scales as a whole
     /// instead of drifting out of proportion with itself.
