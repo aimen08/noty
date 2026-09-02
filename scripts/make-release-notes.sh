@@ -107,8 +107,36 @@ def credited():
             out.append((handle, why))
     return out
 
+def closed_issues():
+    """Issues this release answers, from `Closes #N` / `Fixes #N` /
+    `Implements #N` in its commit messages — so work that lands as a direct
+    commit still credits the person who asked for it."""
+    rng = [f"{prev}..HEAD"] if prev else ["HEAD"]
+    log = subprocess.run(["git", "log", *rng, "--pretty=%B"],
+                         capture_output=True, text=True).stdout
+    numbers = []
+    for m in re.finditer(r"(?i)\b(?:closes|fixes|resolves|implements)\s+#(\d+)", log):
+        n = int(m.group(1))
+        if n not in numbers:
+            numbers.append(n)
+    out = []
+    for n in sorted(numbers):
+        try:
+            raw = subprocess.run(
+                ["gh", "api", f"repos/{repo}/issues/{n}",
+                 "--jq", "[.title, .user.login, .html_url, (.pull_request != null)] | @tsv"],
+                capture_output=True, text=True, timeout=30, check=True).stdout.strip()
+            title, who, url, is_pr = raw.split("\t")
+            if is_pr == "true":      # PR references are already listed above
+                continue
+            out.append((n, title, who, url))
+        except Exception:
+            out.append((n, None, None, f"https://github.com/{repo}/issues/{n}"))
+    return out
+
 pulls = merged_pulls()
 thanks = credited()
+issues = closed_issues()
 
 md, items = [], []
 if pulls:
@@ -132,6 +160,16 @@ else:
             md.append(f"- {s}")
             items.append((None, None, s, None))
         md.append("")
+
+if issues:
+    md.append("## Answered issues\n")
+    for n, title, who, url in issues:
+        if title:
+            md.append(f"- [#{n}]({url}) {title} — requested by "
+                      f"[@{who}](https://github.com/{who})")
+        else:
+            md.append(f"- [#{n}]({url})")
+    md.append("")
 
 if thanks:
     md.append("## Thanks\n")
@@ -159,6 +197,12 @@ for number, url, title, who in items:
 body = f"<p>Noty {html.escape(version)}</p>"
 if rows:
     body += "<ul>" + "".join(rows) + "</ul>"
+if issues:
+    rows = "".join(
+        f'<li><a href="{html.escape(u)}">#{n}</a> {html.escape(t)} &mdash; requested by @{html.escape(w)}</li>'
+        for n, t, w, u in issues if t)
+    if rows:
+        body += "<p>Answered issues:</p><ul>" + rows + "</ul>"
 if thanks:
     names = ", ".join(f"@{html.escape(h)}" for h, _ in thanks)
     body += f"<p>Thanks to {names}.</p>"

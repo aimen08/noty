@@ -572,6 +572,7 @@ struct NoteEditorView: View {
     @State private var text = ""
     @State private var saveWork: DispatchWorkItem?
     @State private var savedAt: Date?
+    @State private var detaching = false
     @FocusState private var findFocused: Bool
 
     private var pal: NoteColor { note.palette }
@@ -580,6 +581,7 @@ struct NoteEditorView: View {
         HStack(spacing: 0) {
             if onRight { gutter; sheet } else { sheet; gutter }
         }
+        .opacity(deck.detachingID == note.id ? 0 : 1)
         .frame(width: deck.noteSize.width, height: deck.noteSize.height)
         .background(
             noteShape
@@ -645,6 +647,27 @@ struct NoteEditorView: View {
                     .foregroundStyle(pal.ink.opacity(0.22))
                     .frame(width: 1)
             }
+            // Grab the tab and pull the note off the deck: past the threshold
+            // the floating panel takes over under the cursor, and the sheet
+            // here hides but stays in the hierarchy — removing it would end
+            // this very gesture mid-drag.
+            .gesture(DragGesture(minimumDistance: 8, coordinateSpace: .global)
+                .onChanged { v in
+                    if detaching {
+                        FloatingNote.shared.dragTo(NSEvent.mouseLocation)
+                    } else if (onRight ? -v.translation.width : v.translation.width) > 40 {
+                        detaching = true
+                        deck.isDragging = true
+                        flush()
+                        controller.detachExpandedNote(at: NSEvent.mouseLocation)
+                    }
+                }
+                .onEnded { _ in
+                    guard detaching else { return }
+                    detaching = false
+                    deck.isDragging = false
+                    controller.finishDetach()
+                })
     }
 
     private var header: some View {

@@ -154,6 +154,14 @@ import reads that back. All Notes shows a `done/total` count per note.
   never turn into a launcher.
 - **Drag to reorder.** Drag a tab up or down and the others step aside to show
   where it will land.
+- **Pull a note anywhere.** Grab the open note by its tab-gutter and drag it
+  off the deck — it becomes a floating sticky wherever you drop it, draggable
+  by its header, across displays. Idle a minute and it tucks itself back to
+  the edge, exactly like a note on the deck; pin it and it stays. One floats
+  at a time — pulling out a second tucks the first.
+- **Hide the deck completely.** Settings → Deck: nothing shows at rest — no
+  pill, no dashes. The edge strip still wakes the tabs on hover. Off by
+  default.
 - **Pin a note to keep it open.** The pin in a note's header (or `⌘P`) stops it
   being dismissed by anything you did not aim at it — clicking away in another
   app, or leaving it idle. Esc and Close still close it. Pinned tabs carry a dot,
