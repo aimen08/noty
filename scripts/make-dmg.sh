@@ -6,8 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/build/Noty.app"
 VERSION="${1:-${MARKETING_VERSION:-1.0.0}}"
-DMG="$ROOT/build/Noty-${VERSION}.dmg"
-RW_DMG="$ROOT/build/.Noty-${VERSION}-rw.dmg"
+SUFFIX="${DMG_SUFFIX:-}"
+DMG="$ROOT/build/Noty-${VERSION}${SUFFIX}.dmg"
+RW_DMG="$ROOT/build/.Noty-${VERSION}${SUFFIX}-rw.dmg"
 
 [ -d "$APP" ] || { echo "no app at $APP — run ./build.sh first" >&2; exit 1; }
 

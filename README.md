@@ -193,8 +193,11 @@ strings ~/Library/Application\ Support/Noty/notes.db | grep "some text from a no
 ## Build
 
 Requires the Swift toolchain from Command Line Tools (**Xcode is not needed**)
-and macOS 15+. The build produces a universal app for both Intel (`x86_64`)
-and Apple Silicon (`arm64`) Macs.
+and macOS 15+. A local release build produces a universal app; releases ship
+one DMG per architecture instead — `Noty.dmg` for Apple Silicon and
+`Noty-intel.dmg` for Intel, each a third smaller than a universal image, with
+its own Sparkle feed (`appcast.xml` / `appcast-intel.xml`) baked into the build
+so updates stay on the right architecture.
 
 ```sh
 ./scripts/fetch-sparkle.sh   # once — pulls the Sparkle binary framework

@@ -103,27 +103,31 @@ jobs:
         if: steps.v.outputs.skip != 'true'
         run: ./scripts/fetch-sparkle.sh
 
-      - name: Build
+      # One DMG per architecture: a universal binary cost a third of the
+      # download for a slice each Mac ignores. Apple Silicon keeps the original
+      # names and feed; Intel gets -intel and its own appcast, which the
+      # x86_64-only build points its SUFeedURL at.
+      - name: Build and package both architectures
         if: steps.v.outputs.skip != 'true'
         env:
           MARKETING_VERSION: ${{ steps.v.outputs.version }}
           BUILD_NUMBER: ${{ steps.v.outputs.build }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
-          ./build.sh release
-          lipo -info build/Noty.app/Contents/MacOS/Noty | grep -Eq 'arm64.*x86_64|x86_64.*arm64'
+          BUILD_ARCHS=arm64 ./build.sh release
+          lipo -info build/Noty.app/Contents/MacOS/Noty | grep -q arm64
           codesign --verify --deep --strict build/Noty.app
+          ./scripts/make-dmg.sh "$VERSION"
+          mv build/Noty.app build/Noty-arm64.app
 
-      - name: Package the disk image
-        if: steps.v.outputs.skip != 'true'
-        env:
-          VERSION: ${{ steps.v.outputs.version }}
-        run: ./scripts/make-dmg.sh "$VERSION"
+          BUILD_ARCHS=x86_64 ./build.sh release
+          lipo -info build/Noty.app/Contents/MacOS/Noty | grep -q x86_64
+          /usr/libexec/PlistBuddy -c "Print :SUFeedURL" build/Noty.app/Contents/Info.plist | grep -q appcast-intel
+          codesign --verify --deep --strict build/Noty.app
+          DMG_SUFFIX=-intel ./scripts/make-dmg.sh "$VERSION"
 
-      - name: Verify the disk image
-        if: steps.v.outputs.skip != 'true'
-        env:
-          VERSION: ${{ steps.v.outputs.version }}
-        run: hdiutil imageinfo "build/Noty-${VERSION}.dmg" >/dev/null
+          hdiutil imageinfo "build/Noty-${VERSION}.dmg" >/dev/null
+          hdiutil imageinfo "build/Noty-${VERSION}-intel.dmg" >/dev/null
 
       - name: Sign the update and write the appcast
         if: steps.v.outputs.skip != 'true'
@@ -146,6 +150,12 @@ jobs:
             "build/Noty-${VERSION}.dmg" \
             "$KEYFILE" \
             "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Noty-${VERSION}.dmg"
+          NOTES="$(cat build/release-notes.html)" \
+          OUT=appcast-intel.xml \
+          ./scripts/make-appcast.sh \
+            "build/Noty-${VERSION}-intel.dmg" \
+            "$KEYFILE" \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Noty-${VERSION}-intel.dmg"
           rm -f "$KEYFILE"
 
       - name: Publish the release
@@ -159,16 +169,19 @@ jobs:
           # A stable filename as well, so the website's download link never has to
           # be edited. Sparkle keeps using the versioned one named in the appcast.
           cp "build/Noty-${V}.dmg" build/Noty.dmg
+          cp "build/Noty-${V}-intel.dmg" build/Noty-intel.dmg
           # --target pins the tag to the commit this job built, not to whatever
           # main has drifted to while it ran.
           gh release create "$TAG" \
             "build/Noty-${V}.dmg" build/Noty.dmg \
+            "build/Noty-${V}-intel.dmg" build/Noty-intel.dmg \
             --title "Noty ${V}" \
             --target "$GITHUB_SHA" \
             --notes-file build/release-notes.md \
             --latest || \
           gh release upload "$TAG" \
-            "build/Noty-${V}.dmg" build/Noty.dmg --clobber
+            "build/Noty-${V}.dmg" build/Noty.dmg \
+            "build/Noty-${V}-intel.dmg" build/Noty-intel.dmg --clobber
 
       - name: Commit the appcast so Sparkle can see the update
         if: steps.v.outputs.skip != 'true'
@@ -177,7 +190,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add appcast.xml
+          git add appcast.xml appcast-intel.xml
           if git diff --cached --quiet; then
             echo "appcast unchanged"
             exit 0

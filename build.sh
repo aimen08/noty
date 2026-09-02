@@ -39,8 +39,11 @@ else
 fi
 
 echo "→ compiling ($MODE) $MARKETING_VERSION ($BUILD_NUMBER)"
-# A universal app matters for what ships; a debug build only ever runs here.
-ARCHES=(arm64 x86_64)
+# Releases ship one DMG per architecture — a universal binary cost a third of
+# the download for a slice each Mac ignores. BUILD_ARCHS picks the slice(s);
+# the default keeps local release builds universal, which is convenient for
+# testing both, and debug builds stay native-only for speed.
+ARCHES=(${BUILD_ARCHS:-arm64 x86_64})
 [ "$MODE" = "debug" ] && ARCHES=("$(uname -m)")
 for ARCH in "${ARCHES[@]}"; do
     echo "→ compiling $ARCH"
@@ -60,6 +63,13 @@ else
 fi
 
 cp "$ROOT/Info.plist" "$APP/Contents/Info.plist"
+# Sparkle knows one feed. An Intel-only build must follow the Intel appcast, or
+# its updates would hand it Apple Silicon disk images forever.
+if [ "${#ARCHES[@]}" -eq 1 ] && [ "${ARCHES[0]}" = "x86_64" ]; then
+    /usr/libexec/PlistBuddy -c \
+        "Set :SUFeedURL https://raw.githubusercontent.com/aimen08/noty/main/appcast-intel.xml" \
+        "$APP/Contents/Info.plist"
+fi
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
 [ -f "$ROOT/Resources/AppIcon.icns" ] && cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/"
