@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.5.0</title>
-      <pubDate>Wed, 02 Sep 2026 18:36:25 +0000</pubDate>
-      <sparkle:version>99</sparkle:version>
-      <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
+      <title>1.5.1</title>
+      <pubDate>Wed, 02 Sep 2026 18:56:39 +0000</pubDate>
+      <sparkle:version>102</sparkle:version>
+      <sparkle:shortVersionString>1.5.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.5.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/23">#23</a> Add localization for English and Simplified Chinese with language switching &mdash; @chenlongapps</li><li><a href="https://github.com/aimen08/noty/pull/24">#24</a> Build universal macOS binaries for Intel and Apple Silicon &mdash; @michelemadonna</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/19">#19</a> [Feature]: Hide after a certain amount of time &mdash; requested by @Zvzdov</li><li><a href="https://github.com/aimen08/noty/issues/21">#21</a> Feature ideas: free-floating notes, one-click insert, and per-app notes &mdash; requested by @smart-z</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.5.0/Noty-intel.dmg" type="application/octet-stream" sparkle:edSignature="K3bx5dzWdteNPphW0jfc+lusgJHal4qqBduzpnh5vtES+P3o9rO5Lmdlsh6i2mBiK4JSTNOovxNvbv/oVEPcCA==" length="1974462" />
+      <description><![CDATA[<p>Noty 1.5.1</p><ul><li>Ship two release assets, not four</li><li>Point the 1.5.0 feeds at the stable asset names</li><li>Release 1.5.0: update appcast</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.5.1/Noty-intel.dmg" type="application/octet-stream" sparkle:edSignature="DO2uxVA0o8B8vnwKBsXMsNrGAVNtzbZki1TWOaNXVb7QCNlib9xt8DqP38Unui2OcBC+I8NfENT9lsBZIb9HAg==" length="1974451" />
     </item>
   </channel>
 </rss>
