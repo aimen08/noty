@@ -145,17 +145,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func showAbout() {
         NSApp.activate()
         let a = NSAlert()
-        a.messageText = "Noty"
-        a.informativeText = """
-        Sticky notes docked to the edge of your screen.
-
-        ⌥⌘N  new note      ⌥⌘A  all notes      ⌥⌘L  archive
-        In a note — Esc closes, ⌘F finds, ⌘. cycles colour, ⌘⌫ deletes.
-
-        Notes are stored locally in an SQLite database; bodies are encrypted \
-        with AES-GCM. Your notes never leave this Mac — the only network request \
-        the app makes is the update check, which you can switch off.
-        """
+        a.messageText = String(localized: "Noty")
+        a.informativeText = String(localized: "Sticky notes docked to the edge of your screen.\n\n⌥⌘N  new note      ⌥⌘A  all notes      ⌥⌘L  archive\nIn a note — Esc closes, ⌘F finds, ⌘. cycles colour, ⌘⌫ deletes.\n\nNotes are stored locally in an SQLite database; bodies are encrypted with AES-GCM. Your notes never leave this Mac — the only network request the app makes is the update check, which you can switch off.")
         a.runModal()
     }
 
@@ -170,29 +161,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About Noty", action: #selector(showAbout), keyEquivalent: "")
-        appMenu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        appMenu.addItem(withTitle: String(localized: "About Noty"), action: #selector(showAbout), keyEquivalent: "")
+        appMenu.addItem(withTitle: String(localized: "Check for Updates…"), action: #selector(checkForUpdates), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "n")
-        appMenu.addItem(withTitle: "All Notes", action: #selector(openAllNotes), keyEquivalent: "a")
-        appMenu.addItem(withTitle: "Archive", action: #selector(openArchive), keyEquivalent: "l")
+        let newNoteItem = appMenu.addItem(withTitle: String(localized: "New Note"), action: #selector(newNote), keyEquivalent: "n")
+        let allNotesItem = appMenu.addItem(withTitle: String(localized: "All Notes"), action: #selector(openAllNotes), keyEquivalent: "a")
+        let archiveItem = appMenu.addItem(withTitle: String(localized: "Archive"), action: #selector(openArchive), keyEquivalent: "l")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        appMenu.addItem(withTitle: String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Import…", action: #selector(importStickies), keyEquivalent: "i")
+        appMenu.addItem(withTitle: String(localized: "Import…"), action: #selector(importStickies), keyEquivalent: "i")
         appMenu.addItem(.separator())
-        let bigger = appMenu.addItem(withTitle: "Bigger Text", action: #selector(biggerText), keyEquivalent: "+")
+        let bigger = appMenu.addItem(withTitle: String(localized: "Bigger Text"), action: #selector(biggerText), keyEquivalent: "+")
         bigger.keyEquivalentModifierMask = [.control]
-        let smaller = appMenu.addItem(withTitle: "Smaller Text", action: #selector(smallerText), keyEquivalent: "-")
+        let smaller = appMenu.addItem(withTitle: String(localized: "Smaller Text"), action: #selector(smallerText), keyEquivalent: "-")
         smaller.keyEquivalentModifierMask = [.control]
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide Noty", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        appMenu.addItem(withTitle: "Quit Noty", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: String(localized: "Hide Noty"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: String(localized: "Quit Noty"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         // The three global shortcuts already carry ⌥; mirror that here so the menu
         // items do not shadow ⌘N / ⌘A / ⌘L inside text fields.
-        for title in ["New Note", "All Notes", "Archive"] {
-            appMenu.item(withTitle: title)?.keyEquivalentModifierMask = [.command, .option]
-        }
+        newNoteItem.keyEquivalentModifierMask = [.command, .option]
+        allNotesItem.keyEquivalentModifierMask = [.command, .option]
+        archiveItem.keyEquivalentModifierMask = [.command, .option]
         for item in appMenu.items where item.action != nil
             && item.action != #selector(NSApplication.hide(_:))
             && item.action != #selector(NSApplication.terminate(_:)) {
@@ -202,15 +193,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         main.addItem(appItem)
 
         let editItem = NSMenuItem()
-        let edit = NSMenu(title: "Edit")
-        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        let redo = edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        let edit = NSMenu(title: String(localized: "Edit"))
+        edit.addItem(withTitle: String(localized: "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: String(localized: "Redo"), action: Selector(("redo:")), keyEquivalent: "z")
         redo.keyEquivalentModifierMask = [.command, .shift]
         edit.addItem(.separator())
-        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: String(localized: "Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: String(localized: "Copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: String(localized: "Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: String(localized: "Select All"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = edit
         main.addItem(editItem)
 

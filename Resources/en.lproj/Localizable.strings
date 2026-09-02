@@ -1,2 +1,65 @@
 /* Used by the localization bundle smoke test. */
 "Noty" = "Noty";
+
+/* App menu and About panel. */
+"About Noty" = "About Noty";
+"Check for Updates…" = "Check for Updates…";
+"New Note" = "New Note";
+"All Notes" = "All Notes";
+"Archive" = "Archive";
+"Settings…" = "Settings…";
+"Import…" = "Import…";
+"Bigger Text" = "Bigger Text";
+"Smaller Text" = "Smaller Text";
+"Hide Noty" = "Hide Noty";
+"Quit Noty" = "Quit Noty";
+"Edit" = "Edit";
+"Undo" = "Undo";
+"Redo" = "Redo";
+"Cut" = "Cut";
+"Copy" = "Copy";
+"Paste" = "Paste";
+"Select All" = "Select All";
+
+/* Deck context menu. */
+"Show over full-screen apps" = "Show over full-screen apps";
+"Deck style" = "Deck style";
+"Labelled tabs" = "Labelled tabs";
+"Colour chips" = "Colour chips";
+"Note font" = "Note font";
+"System" = "System";
+"Noteworthy" = "Noteworthy";
+"Bradley Hand" = "Bradley Hand";
+"Marker Felt" = "Marker Felt";
+"Chalkboard" = "Chalkboard";
+"Avenir Next" = "Avenir Next";
+"New York" = "New York";
+"Georgia" = "Georgia";
+"Menlo" = "Menlo";
+"Text size" = "Text size";
+"Small" = "Small";
+"Medium" = "Medium";
+"Large" = "Large";
+"Extra Large" = "Extra Large";
+"Deck size" = "Deck size";
+"Default" = "Default";
+"Extra large" = "Extra large";
+"Keep deck open" = "Keep deck open";
+"Dock deck to left edge" = "Dock deck to left edge";
+"Display" = "Display";
+"All Displays" = "All Displays";
+"Main Display" = "Main Display";
+"Main" = "Main";
+"Check automatically" = "Check automatically";
+"Launch at login" = "Launch at login";
+"Export" = "Export";
+"Markdown (one file per note)…" = "Markdown (one file per note)…";
+"Plain text (one file per note)…" = "Plain text (one file per note)…";
+"Single document…" = "Single document…";
+"Sticky archive (.stickies)…" = "Sticky archive (.stickies)…";
+
+/* AppKit window and updater text. */
+"Noty Settings" = "Noty Settings";
+"Sticky notes docked to the edge of your screen.\n\n⌥⌘N  new note      ⌥⌘A  all notes      ⌥⌘L  archive\nIn a note — Esc closes, ⌘F finds, ⌘. cycles colour, ⌘⌫ deletes.\n\nNotes are stored locally in an SQLite database; bodies are encrypted with AES-GCM. Your notes never leave this Mac — the only network request the app makes is the update check, which you can switch off." = "Sticky notes docked to the edge of your screen.\n\n⌥⌘N  new note      ⌥⌘A  all notes      ⌥⌘L  archive\nIn a note — Esc closes, ⌘F finds, ⌘. cycles colour, ⌘⌫ deletes.\n\nNotes are stored locally in an SQLite database; bodies are encrypted with AES-GCM. Your notes never leave this Mac — the only network request the app makes is the update check, which you can switch off.";
+"Updates are not available in this build" = "Updates are not available in this build";
+"This copy of Noty was built without the Sparkle framework. Run ./scripts/fetch-sparkle.sh and rebuild to enable automatic updates." = "This copy of Noty was built without the Sparkle framework. Run ./scripts/fetch-sparkle.sh and rebuild to enable automatic updates.";

@@ -235,7 +235,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 500),
                              styleMask: [.titled, .closable],
                              backing: .buffered, defer: false)
-            w.title = "Noty Settings"
+            w.title = String(localized: "Noty Settings")
             w.isReleasedWhenClosed = false
             w.delegate = self
             w.contentView = NSHostingView(rootView: SettingsView(model: model))
