@@ -6,6 +6,13 @@ enum LibraryMode: String, CaseIterable, Identifiable {
     case all = "All Notes"
     case archive = "Archive"
     var id: String { rawValue }
+
+    var displayTitle: String {
+        switch self {
+        case .all: String(localized: "All Notes")
+        case .archive: String(localized: "Archive")
+        }
+    }
 }
 
 final class LibraryModel: ObservableObject {
@@ -102,7 +109,7 @@ struct LibraryView: View {
     private var sidebar: some View {
         VStack(spacing: 0) {
             Picker("", selection: $model.mode) {
-                ForEach(LibraryMode.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(LibraryMode.allCases) { Text($0.displayTitle).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -133,8 +140,10 @@ struct LibraryView: View {
                     Image(systemName: model.mode == .all ? "note.text" : "archivebox")
                         .font(.system(size: 22)).foregroundStyle(.quaternary)
                     Text(model.query.isEmpty
-                         ? (model.mode == .all ? "No notes yet" : "Nothing archived")
-                         : "No matches")
+                         ? (model.mode == .all
+                            ? String(localized: "No notes yet")
+                            : String(localized: "Nothing archived"))
+                         : String(localized: "No matches"))
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -176,7 +185,8 @@ struct LibraryView: View {
                 .fixedSize()
 
                 Spacer()
-                Text("\(filtered.count)")
+                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("notes_count", comment: "Visible note count"), filtered.count))
                     .font(.system(size: 11).monospacedDigit())
                     .foregroundStyle(.tertiary)
             }
@@ -262,10 +272,10 @@ struct LibraryDetail: View {
                         .padding(3).contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .help("Cycle colour · right-click to pick")
+                .help(String(localized: "Cycle colour · right-click to pick"))
                 .contextMenu {
                     ForEach(Array(NoteColor.all.enumerated()), id: \.offset) { idx, c in
-                        Button(idx == note.color ? "✓ \(c.name)" : c.name) {
+                        Button(idx == note.color ? "✓ \(c.displayName)" : c.displayName) {
                             NoteStore.shared.setColor(id: note.id, color: idx)
                         }
                     }
@@ -274,7 +284,8 @@ struct LibraryDetail: View {
                 Text(note.displayTitle)
                     .font(.system(size: 13, weight: .semibold)).lineLimit(1)
                 Spacer()
-                Text("Edited \(Fmt.ago(note.modified))")
+                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("Edited %@", comment: "Note edit status"), Fmt.ago(note.modified)))
                     .font(.system(size: 10.5)).foregroundStyle(.secondary)
 
                 NoteTextDirectionMenu(direction: note.textDirection,

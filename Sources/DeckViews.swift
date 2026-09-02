@@ -676,7 +676,8 @@ struct MoreTab: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(TabPressStyle())
-        .help("\(count) more note\(count == 1 ? "" : "s")")
+        .help(String.localizedStringWithFormat(
+            NSLocalizedString("more_notes_count", comment: "Tooltip for hidden notes"), count))
     }
 }
 
@@ -757,7 +758,11 @@ struct CogButton: View {
 extension View {
     func noteContextMenu(_ note: Note) -> some View {
         contextMenu {
-            Button(note.pinned ? "Unpin" : "Pin") { NoteStore.shared.togglePin(id: note.id) }
+            if note.pinned {
+                Button("Unpin") { NoteStore.shared.togglePin(id: note.id) }
+            } else {
+                Button("Pin") { NoteStore.shared.togglePin(id: note.id) }
+            }
             Button("Archive") { NoteStore.shared.setArchived(id: note.id, true) }
             Button("Cycle colour  ⌘.") { NoteStore.shared.cycleColor(id: note.id) }
             Divider()

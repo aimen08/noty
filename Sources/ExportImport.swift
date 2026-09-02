@@ -46,7 +46,7 @@ enum Transfer {
 
     static func export(_ format: Format, notes: [Note]) {
         guard !notes.isEmpty else {
-            alert("Nothing to export", "There are no notes yet.")
+            alert(String(localized: "Nothing to export"), String(localized: "There are no notes yet."))
             return
         }
         NSApp.activate()
@@ -64,8 +64,9 @@ enum Transfer {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Export Here"
-        panel.message = "Choose a folder for \(notes.count) \(ext.uppercased()) file\(notes.count == 1 ? "" : "s")."
+        panel.prompt = String(localized: "Export Here")
+        panel.message = String.localizedStringWithFormat(
+            NSLocalizedString("export_file_count", comment: "Export file count"), notes.count, ext.uppercased())
         guard panel.runModal() == .OK, let dir = panel.url else { return }
 
         var used = Set<String>()
@@ -87,7 +88,10 @@ enum Transfer {
         }
         reveal(dir)
         if written < notes.count {
-            alert("Export incomplete", "Wrote \(written) of \(notes.count) notes. See Console for details.")
+            alert(String(localized: "Export incomplete"),
+                  String.localizedStringWithFormat(
+                    NSLocalizedString("export_incomplete_count", comment: "Incomplete export count"),
+                    notes.count, written))
         }
     }
 
@@ -126,7 +130,10 @@ enum Transfer {
             try enc.encode(archive).write(to: url, options: .atomic)
             reveal(url)
         } catch {
-            alert("Export failed", error.localizedDescription)
+            alert(String(localized: "Export failed"),
+                  String.localizedStringWithFormat(
+                    NSLocalizedString("Export failed: %@", comment: "Export failure detail"),
+                    error.localizedDescription))
         }
     }
 
@@ -153,7 +160,7 @@ enum Transfer {
         if let sticky = UTType(filenameExtension: "stickies") { types.append(sticky) }
         panel.allowedContentTypes = types
         panel.allowsOtherFileTypes = true
-        panel.message = "Choose a .stickies archive, or Markdown / text files."
+        panel.message = String(localized: "Choose a .stickies archive, or Markdown / text files.")
         guard panel.runModal() == .OK else { return }
 
         var incoming: [Note] = []
@@ -184,10 +191,16 @@ enum Transfer {
 
         let added = NoteStore.shared.ingest(incoming)
         if failed.isEmpty {
-            alert("Import complete", "Added \(added) note\(added == 1 ? "" : "s").")
+            alert(String(localized: "Import complete"),
+                  String.localizedStringWithFormat(
+                    NSLocalizedString("import_added_count", comment: "Imported note count"), added))
         } else {
-            alert("Import finished with problems",
-                  "Added \(added) note\(added == 1 ? "" : "s"). Could not read: \(failed.joined(separator: ", "))")
+            let addedMessage = String.localizedStringWithFormat(
+                NSLocalizedString("import_added_count", comment: "Imported note count"), added)
+            let failedMessage = String.localizedStringWithFormat(
+                NSLocalizedString("Could not read: %@", comment: "Import failure files"),
+                failed.joined(separator: ", "))
+            alert(String(localized: "Import finished with problems"), "\(addedMessage) \(failedMessage)")
         }
     }
 
@@ -207,7 +220,10 @@ enum Transfer {
             try s.write(to: url, atomically: true, encoding: .utf8)
             reveal(url)
         } catch {
-            alert("Export failed", error.localizedDescription)
+            alert(String(localized: "Export failed"),
+                  String.localizedStringWithFormat(
+                    NSLocalizedString("Export failed: %@", comment: "Export failure detail"),
+                    error.localizedDescription))
         }
     }
 

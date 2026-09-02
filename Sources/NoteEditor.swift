@@ -559,7 +559,8 @@ struct NoteTextDirectionMenu: View {
         // overriding the label's foreground style (most visibly for "Auto").
         .tint(foreground)
         .fixedSize()
-        .help("Text direction: \(direction.title)")
+        .help(String.localizedStringWithFormat(
+            NSLocalizedString("Text direction: %@", comment: "Text direction menu help"), direction.title))
     }
 }
 
@@ -654,7 +655,10 @@ struct NoteEditorView: View {
                 .foregroundStyle(pal.ink.opacity(0.92))
                 .lineLimit(1)
             Spacer(minLength: 6)
-            Text(savedAt.map { "Saved · \(Fmt.ago($0))" } ?? "Not saved")
+            Text(savedAt.map {
+                String.localizedStringWithFormat(
+                    NSLocalizedString("Saved · %@", comment: "Note save status"), Fmt.ago($0))
+            } ?? String(localized: "Not saved"))
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.42))
             Button { NoteStore.shared.togglePin(id: note.id) } label: {
@@ -666,7 +670,9 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(note.pinned ? 0.85 : 0.4))
-            .help(note.pinned ? "Unpin — ⌘P" : "Pin so it stays open  ⌘P")
+            .help(String(localized: note.pinned
+                         ? "Unpin — ⌘P"
+                         : "Pin so it stays open  ⌘P"))
 
             NoteTextDirectionMenu(direction: note.textDirection,
                                   foreground: pal.ink.opacity(0.5)) {
@@ -739,7 +745,7 @@ struct NoteEditorView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .help(c.name)
+                .help(c.displayName)
             }
             Spacer(minLength: 8)
             footerButton("Archive") {
@@ -756,7 +762,7 @@ struct NoteEditorView: View {
         .frame(height: 34)
     }
 
-    private func footerButton(_ title: String, action: @escaping () -> Void) -> some View {
+    private func footerButton(_ title: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 10.5, weight: .medium))

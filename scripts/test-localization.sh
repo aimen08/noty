@@ -188,6 +188,128 @@ for key, expected_zh in required_settings.items():
     assert key in zh, f"missing Task 3 key in zh-Hans: {key}"
     assert en[key] == key, f"English Task 3 value must preserve source text: {key}"
     assert zh[key] == expected_zh, f"unexpected zh-Hans Task 3 value for {key!r}"
+
+# Task 4 note, library, capture, undo, and transfer workflows.
+task4_sources = {
+    "DeckViews.swift": (root / "Sources" / "DeckViews.swift").read_text(),
+    "NoteEditor.swift": (root / "Sources" / "NoteEditor.swift").read_text(),
+    "LibraryWindow.swift": (root / "Sources" / "LibraryWindow.swift").read_text(),
+    "QuickCapture.swift": (root / "Sources" / "QuickCapture.swift").read_text(),
+    "UndoToast.swift": (root / "Sources" / "UndoToast.swift").read_text(),
+    "ExportImport.swift": (root / "Sources" / "ExportImport.swift").read_text(),
+}
+deck_views = task4_sources["DeckViews.swift"]
+note_editor = task4_sources["NoteEditor.swift"]
+library = task4_sources["LibraryWindow.swift"]
+quick_capture = task4_sources["QuickCapture.swift"]
+undo_toast = task4_sources["UndoToast.swift"]
+transfer = task4_sources["ExportImport.swift"]
+
+assert 'Text("Empty note")' in deck_views, "preview empty state must keep a localization key"
+assert 'String.localizedStringWithFormat(\n            NSLocalizedString("more_notes_count"' in deck_views, \
+    "overflow tooltip must use the plural resource"
+assert '.help(c.displayName)' in note_editor, "editor color help must use the localized display name"
+assert 'c.displayName' in library, "library color menu must use the localized display name"
+assert 'c.displayName' in note_editor, "editor color controls must use the localized display name"
+assert 'Button(idx == note.color ? "✓ \\(c.displayName)" : c.displayName)' in library, \
+    "library color menu must use the localized display name"
+assert 'private func footerButton(_ title: LocalizedStringKey' in note_editor, \
+    "editor footer buttons must preserve localization keys"
+assert 'String(localized: "No matches")' in library, "conditional library empty states must localize explicitly"
+assert 'var displayTitle: String' in library and 'Text($0.displayTitle)' in library, \
+    "library modes need a localized display title while raw values stay stable"
+assert 'NSLocalizedString("export_file_count"' in transfer and 'String.localizedStringWithFormat' in transfer, \
+    "export count copy must use the plural resource"
+assert 'NSLocalizedString("import_added_count"' in transfer and 'String.localizedStringWithFormat' in transfer, \
+    "import count copy must use the plural resource"
+assert 'String(localized: "Quick note")' in quick_capture, "quick capture title must be localized explicitly"
+assert 'Text("Note deleted")' in undo_toast, "undo copy must keep a localization key"
+assert 'StickyNote' in transfer and 'colorName = n.palette.name' in transfer, \
+    "archive colorName must remain the stable English persistence value"
+assert not re.search(r"note\\\(count == 1 \?", transfer), "transfer code must not hand-build plural suffixes"
+
+required_task4 = {
+    "Empty note": "空笔记",
+    "NEW NOTE": "新建笔记",
+    "New Note  ⌥⌘N": "新建笔记  ⌥⌘N",
+    "Settings  ⌘,": "设置  ⌘,",
+    "Unpin": "取消置顶",
+    "Pin": "置顶",
+    "Archive": "归档",
+    "Cycle colour  ⌘.": "切换颜色  ⌘.",
+    "Delete": "删除",
+    "Restore": "恢复",
+    "Auto": "自动",
+    "Text direction: %@": "文字方向：%@",
+    "Unpin — ⌘P": "取消置顶 — ⌘P",
+    "Pin so it stays open  ⌘P": "置顶以保持打开  ⌘P",
+    "Task  ⌘T": "任务  ⌘T",
+    "Find  ⌘F": "查找  ⌘F",
+    "Find in note": "在笔记中查找",
+    "Cycle colour · right-click to pick": "切换颜色 · 右键选择",
+    "Select a note": "选择一篇笔记",
+    "Search all notes": "搜索所有笔记",
+    "No notes yet": "还没有笔记",
+    "Nothing archived": "没有归档笔记",
+    "No matches": "没有匹配项",
+    "Markdown — one file per note…": "Markdown — 每篇笔记一个文件…",
+    "Plain text — one file per note…": "纯文本 — 每篇笔记一个文件…",
+    "Single document…": "单个文档…",
+    "Sticky archive (.stickies)…": "便笺归档（.stickies）…",
+    "Export Here": "在此导出",
+    "Nothing to export": "没有可导出的内容",
+    "There are no notes yet.": "还没有笔记。",
+    "Export incomplete": "导出未完成",
+    "See Console for details.": "详情请查看控制台。",
+    "Edited %@": "编辑于 %@",
+    "Saved · %@": "已保存 · %@",
+    "Not saved": "未保存",
+    "Export failed": "导出失败",
+    "Choose a .stickies archive, or Markdown / text files.": "选择 .stickies 归档或 Markdown / 文本文件。",
+    "Import complete": "导入完成",
+    "Import finished with problems": "导入完成，但存在问题",
+    "Could not read: %@": "无法读取：%@",
+    "Quick note": "快速笔记",
+    "↩ save    ⇧↩ new line    esc cancel": "↩ 保存    ⇧↩ 换行    esc 取消",
+    "Note deleted": "笔记已删除",
+    "Undo": "撤销",
+}
+for key, expected_zh in required_task4.items():
+    assert key in en, f"missing Task 4 key in en: {key}"
+    assert key in zh, f"missing Task 4 key in zh-Hans: {key}"
+    assert en[key] == key, f"English Task 4 value must preserve source text: {key}"
+    assert zh[key] == expected_zh, f"unexpected zh-Hans Task 4 value for {key!r}"
+
+plural_expected = {
+    "more_notes_count": ("%d more note", "%d more notes", "还有 %d 篇笔记"),
+    "export_file_count": ("Choose a folder for %d %@ file.", "Choose a folder for %d %@ files.", "选择一个文件夹以保存 %d 个 %@ 文件。"),
+    "export_incomplete_count": ("Wrote %2$d of %1$d note. See Console for details.", "Wrote %2$d of %1$d notes. See Console for details.", "已写入 %2$d/%1$d 篇笔记。详情请查看控制台。"),
+    "import_added_count": ("Added %d note.", "Added %d notes.", "已添加 %d 篇笔记。"),
+    "notes_count": ("%d note", "%d notes", "%d 篇笔记"),
+}
+en_dict = values("en", "Localizable.stringsdict")
+zh_dict = values("zh-Hans", "Localizable.stringsdict")
+for key, (en_one, en_other, zh_other) in plural_expected.items():
+    assert key in en_dict and key in zh_dict, f"missing plural key: {key}"
+    for locale, dictionary in (("en", en_dict), ("zh-Hans", zh_dict)):
+        entry = dictionary[key]
+        assert entry["NSStringLocalizedFormatKey"] == "%#@count@", f"bad plural format key: {locale}/{key}"
+        count = entry["count"]
+        assert count["NSStringFormatSpecTypeKey"] == "NSStringPluralRuleType", f"bad plural rule: {locale}/{key}"
+        assert count["NSStringFormatValueTypeKey"] == "d", f"bad plural value type: {locale}/{key}"
+    assert en_dict[key]["count"]["one"] == en_one, f"bad English one form: {key}"
+    assert en_dict[key]["count"]["other"] == en_other, f"bad English other form: {key}"
+    assert set(zh_dict[key]["count"]) == {"NSStringFormatSpecTypeKey", "NSStringFormatValueTypeKey", "other"}, \
+        f"Chinese plural must use other only: {key}"
+    assert zh_dict[key]["count"]["other"] == zh_other, f"bad Chinese other form: {key}"
+
+# Exercise the count branches the same way the resources are consumed: English
+# uses one for exactly 1 and other for 0/2; Chinese always uses other.
+for count in (0, 1, 2):
+    en_form = "one" if count == 1 else "other"
+    for key in plural_expected:
+        assert en_dict[key]["count"][en_form]
+        assert zh_dict[key]["count"]["other"]
 PY
 
 "$ROOT/build.sh" debug
