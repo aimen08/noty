@@ -207,12 +207,6 @@ open build/Noty.app
 `build.sh` drives `swiftc` directly over `Sources/*.swift`, assembles the
 `.app` bundle around `Info.plist`, embeds Sparkle, and signs it.
 
-Localization resources live in `Resources/*.lproj`; `build.sh` copies them
-into the app bundle automatically. When adding a language, maintain both
-`Localizable.strings` and `Localizable.stringsdict`, add its stable language
-code and autonym to `AppLanguage` in `Sources/Settings.swift`, then run
-`./scripts/test-localization.sh`.
-
 Sparkle is optional. Without `Sparkle/Sparkle.framework` the app still builds —
 `Updater.swift` compiles to a stub and the update menu says so.
 
