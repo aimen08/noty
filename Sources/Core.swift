@@ -48,7 +48,7 @@ enum Crypto {
 // MARK: - Palette
 
 struct NoteColor {
-    let name: String
+    let name: String       // stable English archive value
     let paper: Color      // note body background
     let dash: Color       // saturated edge dash / colour bar
     let ink: Color        // text colour on paper
@@ -68,6 +68,10 @@ struct NoteColor {
 
     static func at(_ i: Int) -> NoteColor { all[((i % all.count) + all.count) % all.count] }
 
+    var localizedName: String {
+        L10n.text("color.\(name.lowercased())")
+    }
+
     private static func hex(_ v: UInt32) -> Color {
         Color(.sRGB,
               red:   Double((v >> 16) & 0xFF) / 255,
@@ -81,10 +85,14 @@ struct NoteColor {
 
 /// One entry per face offered for note bodies.
 struct NoteFace {
-    let name: String          // shown in the menu
+    let name: String          // stable face name; localizedName is shown in UI
     let body: String          // PostScript name, "" for the system font
     let tab: String           // heavier cut used on the tab labels
     let bump: CGFloat         // size nudge so faces look the same size as each other
+
+    var localizedName: String {
+        body.isEmpty ? L10n.text("font.system") : name
+    }
 }
 
 enum Ink {
@@ -173,9 +181,9 @@ enum NoteTextDirection: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .automatic:   "Automatic"
-        case .leftToRight: "Left to Right"
-        case .rightToLeft: "Right to Left"
+        case .automatic:   L10n.text("direction.automatic")
+        case .leftToRight: L10n.text("direction.left_to_right")
+        case .rightToLeft: L10n.text("direction.right_to_left")
         }
     }
 
@@ -277,7 +285,7 @@ struct Note: Identifiable, Hashable {
         return clean.count > 60 ? String(clean.prefix(60)) + "…" : clean
     }
 
-    var displayTitle: String { title.isEmpty ? "New note" : title }
+    var displayTitle: String { title.isEmpty ? L10n.text("note.untitled") : title }
 
     /// Completed / total, or nil when the note holds no tasks.
     var taskProgress: (done: Int, total: Int)? {
@@ -363,7 +371,7 @@ enum Fmt {
     }()
 
     static func ago(_ d: Date) -> String {
-        if Date().timeIntervalSince(d) < 60 { return "just now" }
+        if Date().timeIntervalSince(d) < 60 { return L10n.text("date.just_now") }
         return relative.localizedString(for: d, relativeTo: Date())
     }
 }

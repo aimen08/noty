@@ -1,0 +1,208 @@
+"about.body" = "停靠在屏幕边缘的便笺。\n\n⌥⌘N  新建便笺      ⌥⌘A  所有便笺      ⌥⌘L  归档\n在便笺中 — Esc 关闭，⌘F 查找，⌘. 切换颜色，⌘⌫ 删除。\n\n便笺保存在本机的 SQLite 数据库中，正文使用 AES-GCM 加密。便笺绝不会离开这台 Mac；应用唯一的网络请求是更新检查，并且可以关闭。";
+
+"action.archive" = "归档";
+"action.close" = "关闭";
+"action.cycle_colour" = "切换颜色";
+"action.delete" = "删除";
+"action.find" = "查找";
+"action.pin" = "固定";
+"action.restore" = "恢复";
+"action.undo" = "撤销";
+"action.unpin" = "取消固定";
+
+"capture.hint" = "↩ 保存    ⇧↩ 换行    esc 取消";
+"capture.title" = "快速记录";
+
+"color.lemon" = "柠檬黄";
+"color.peach" = "蜜桃橙";
+"color.rose" = "玫瑰粉";
+"color.lilac" = "丁香紫";
+"color.sky" = "天空蓝";
+"color.mint" = "薄荷绿";
+"color.sand" = "沙褐色";
+"color.slate" = "石板灰";
+
+"date.just_now" = "刚刚";
+
+"deck_style.colour_chips" = "颜色标签";
+"deck_style.labelled_tabs" = "文字标签";
+
+"direction.auto_short" = "自动";
+"direction.automatic" = "自动";
+"direction.left_to_right" = "从左到右";
+"direction.right_to_left" = "从右到左";
+
+"display.all" = "所有显示器";
+"display.main" = "主显示器";
+"display.named_main" = "%@（主显示器）";
+"edge.left" = "左侧";
+"edge.right" = "右侧";
+
+"export.archive_filename" = "Noty 归档-%@.stickies";
+"export.choose_folder" = "请选择用于保存 %ld 个 %@ 文件的文件夹。";
+"export.default_note_name" = "便笺-%@";
+"export.document_title" = "Noty 导出";
+"export.empty_body" = "目前还没有便笺。";
+"export.empty_title" = "没有可导出的内容";
+"export.failed_title" = "导出失败";
+"export.here" = "导出到这里";
+"export.incomplete_body" = "已写入 %1$ld 个，共 %2$@。详情请查看“控制台”。";
+"export.incomplete_title" = "导出未完成";
+"export.markdown_filename" = "Noty 导出-%@.md";
+"export.markdown_per_note" = "Markdown（每篇便笺一个文件）…";
+"export.metadata" = "%1$@ · 创建于 %2$@ · 修改于 %3$@%4$@";
+"export.metadata_archived_suffix" = " · 已归档";
+"export.plain_per_note" = "纯文本（每篇便笺一个文件）…";
+"export.single_document" = "单个文稿…";
+"export.sticky_archive" = "便笺归档（.stickies）…";
+
+"font.system" = "系统字体";
+
+"help.cycle_colour" = "切换颜色  ⌘.";
+"help.find" = "查找  ⌘F";
+"help.new_note" = "新建便笺  ⌥⌘N";
+"help.pick_colour" = "切换颜色 · 右键点按可选取";
+"help.pin" = "固定并保持打开  ⌘P";
+"help.settings" = "设置  ⌘,";
+"help.task" = "任务  ⌘T";
+"help.text_direction" = "文本方向：%@";
+"help.unpin" = "取消固定 — ⌘P";
+
+"import.added" = "已添加 %ld 篇便笺。";
+"import.choose_files" = "请选择 .stickies 归档或 Markdown / 文本文件。";
+"import.complete_title" = "导入完成";
+"import.problems_body" = "%1$@ 无法读取：%2$@";
+"import.problems_title" = "导入完成，但遇到问题";
+
+"key.escape" = "esc";
+"key.space" = "空格";
+"key.unknown" = "按键 %u";
+
+"language.english" = "English";
+"language.simplified_chinese" = "简体中文";
+"language.system" = "跟随系统";
+
+"library.all_notes" = "所有便笺";
+"library.archive" = "归档";
+"library.no_archive" = "归档为空";
+"library.no_matches" = "没有匹配项";
+"library.no_notes" = "还没有便笺";
+"library.search_placeholder" = "搜索所有便笺";
+"library.select_note" = "选择一篇便笺";
+
+"menu.about" = "关于 Noty";
+"menu.all_notes" = "所有便笺";
+"menu.archive" = "归档";
+"menu.bigger_text" = "放大文本";
+"menu.check_automatically" = "自动检查";
+"menu.check_for_updates" = "检查更新…";
+"menu.copy" = "拷贝";
+"menu.cut" = "剪切";
+"menu.deck_size" = "便笺栏大小";
+"menu.deck_style" = "便笺栏样式";
+"menu.display" = "显示器";
+"menu.dock_left" = "将便笺栏停靠在左侧";
+"menu.edit" = "编辑";
+"menu.export" = "导出";
+"menu.hide" = "隐藏 Noty";
+"menu.import" = "导入…";
+"menu.keep_deck_open" = "保持便笺栏展开";
+"menu.launch_at_login" = "登录时启动";
+"menu.new_note" = "新建便笺";
+"menu.note_font" = "便笺字体";
+"menu.paste" = "粘贴";
+"menu.quit" = "退出 Noty";
+"menu.redo" = "重做";
+"menu.select_all" = "全选";
+"menu.settings" = "设置…";
+"menu.show_over_fullscreen" = "显示在全屏应用上方";
+"menu.smaller_text" = "缩小文本";
+"menu.text_size" = "文本大小";
+"menu.undo" = "撤销";
+
+"note.edited" = "编辑于 %@";
+"note.empty" = "空白便笺";
+"note.find_placeholder" = "在便笺中查找";
+"note.new_tab" = "新建便笺";
+"note.not_saved" = "尚未保存";
+"note.saved" = "已保存 · %@";
+"note.untitled" = "新便笺";
+"notes.count" = "%ld 篇便笺";
+"notes.more" = "另外 %ld 篇便笺";
+
+"settings.deck.caption" = "设置便笺在屏幕边缘的显示方式。";
+"settings.deck.detection_area" = "感应区域";
+"settings.deck.detection_help" = "指针距边缘 %ld 点时唤醒便笺栏。";
+"settings.deck.display" = "显示器";
+"settings.deck.drag_help" = "按住 ⌥ Option 并拖移胶囊，可将它移到任意显示器、边缘或高度。";
+"settings.deck.edge" = "边缘";
+"settings.deck.hover_open" = "悬停在标签上时打开便笺";
+"settings.deck.hover_open_help" = "指针停在标签上即可打开，无需点按。默认关闭。";
+"settings.deck.hover_preview" = "悬停时显示预览";
+"settings.deck.hover_preview_help" = "将指针悬停在标签上，无需打开即可预览内容。";
+"settings.deck.hide_pill" = "完全隐藏便笺栏";
+"settings.deck.hide_pill_help" = "空闲时不显示任何内容——没有胶囊，也没有色条。将指针移到屏幕边缘即可唤出标签。";
+"settings.deck.keep_open" = "保持便笺栏展开";
+"settings.deck.keep_open_help" = "指针移开后，标签及其文字仍显示在边缘，不会折叠成胶囊。";
+"settings.deck.language" = "语言";
+"settings.deck.language_help" = "更改语言后，Noty 会自动重新启动。";
+"settings.deck.size" = "大小";
+"settings.deck.size_help" = "同时缩放标签、标签文字、颜色标记和收起后的胶囊。";
+"settings.deck.style" = "样式";
+"settings.deck.tab" = "便笺栏";
+
+"settings.notes.caption" = "设置便笺中的文字与格式。";
+"settings.notes.font" = "字体";
+"settings.notes.font_size_value" = "%.1f 点";
+"settings.notes.markdown" = "输入时显示 Markdown 样式";
+"settings.notes.markdown_help" = "支持 **粗体**、*斜体*、`代码`、~~删除线~~、# 标题、> 引用和 [链接](url)；按住 ⌘ 点按可打开链接。文本仍以纯文本保存，只改变显示效果。";
+"settings.notes.note_size" = "便笺大小";
+"settings.notes.tab" = "便笺";
+"settings.notes.text_size" = "文本大小";
+
+"settings.shortcuts.caption" = "点按字段并按下按键；按 ⌫ 可清除。";
+"settings.shortcuts.global" = "在任何应用中";
+"settings.shortcuts.hint" = "便笺内快捷键仅在便笺打开时生效，因此可以使用不带修饰键的按键。";
+"settings.shortcuts.in_note" = "在打开的便笺中";
+"settings.shortcuts.tab" = "快捷键";
+
+"settings.updates.automatic" = "自动检查更新";
+"settings.updates.caption" = "Noty 会获取一个文件，用于检查是否有新版本。";
+"settings.updates.check_now" = "现在检查";
+"settings.updates.privacy" = "获取 appcast.xml 是 Noty 唯一的网络请求；无需账户，没有分析统计，也不会有任何便笺内容离开这台 Mac。每个更新都会使用应用内的 EdDSA 公钥进行验证；由其他密钥签名的更新将被拒绝。";
+"settings.updates.tab" = "更新";
+"settings.updates.this_copy" = "当前版本";
+"settings.updates.version" = "Noty %1$@  （内部版本 %2$@）";
+"settings.window_title" = "Noty 设置";
+
+"shortcut.all_notes" = "所有便笺";
+"shortcut.archive_note" = "归档便笺";
+"shortcut.archive_window" = "归档窗口";
+"shortcut.duplicate" = "已被其他快捷键使用";
+"shortcut.new_note" = "新建便笺";
+"shortcut.press_keys" = "请按快捷键…";
+"shortcut.quick_capture" = "快速记录";
+"shortcut.toggle_task" = "切换任务状态";
+
+"size.default" = "默认";
+"size.extra_large" = "特大";
+"size.huge" = "超大";
+"size.large" = "大";
+"size.medium" = "中";
+"size.small" = "小";
+
+"undo.note_deleted" = "便笺已删除";
+
+"updates.install_sparkle" = "请运行 ./scripts/fetch-sparkle.sh 并重新构建，以加入更新程序。";
+"updates.last_checked" = "上次检查于 %@。";
+"updates.no_sparkle_status" = "此构建未包含 Sparkle 框架，因此无法自行更新。";
+"updates.not_checked" = "尚未检查。";
+"updates.unavailable_body" = "此 Noty 构建未包含 Sparkle 框架。请运行 ./scripts/fetch-sparkle.sh 并重新构建，以启用自动更新。";
+"updates.unavailable_title" = "此构建无法使用更新功能";
+
+"welcome.note_body" = "欢迎使用 Noty\n\n便笺停靠在屏幕边缘。将指针移到右侧边缘，便笺栏就会展开。\n\n⌥⌘N  新建便笺\n⌥⌘A  所有便笺\n⌥⌘L  归档\n\n在便笺中：Esc 关闭，⌘F 查找，⌘. 切换颜色，⌘⌫ 删除后可在十秒内撤销。";
+
+"width.narrow" = "窄";
+"width.standard" = "标准";
+"width.very_wide" = "特宽";
+"width.wide" = "宽";

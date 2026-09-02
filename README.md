@@ -154,6 +154,17 @@ import reads that back. All Notes shows a `done/total` count per note.
   never turn into a launcher.
 - **Drag to reorder.** Drag a tab up or down and the others step aside to show
   where it will land.
+- **Pull a note anywhere.** Grab the open note by its tab-gutter and drag it
+  off the deck — it becomes a floating sticky wherever you drop it, draggable
+  by its header, across displays, and resizable from any edge or corner. It
+  remembers the size you stretch it to. Idle a minute and it tucks itself back to
+  the edge, exactly like a note on the deck. Unpinned it stacks like any
+  window — other windows can cover it; pin it and it stays on top and never
+  tucks. One floats
+  at a time — pulling out a second tucks the first.
+- **Hide the deck completely.** Settings → Deck: nothing shows at rest — no
+  pill, no dashes. The edge strip still wakes the tabs on hover. Off by
+  default.
 - **Pin a note to keep it open.** The pin in a note's header (or `⌘P`) stops it
   being dismissed by anything you did not aim at it — clicking away in another
   app, or leaving it idle. Esc and Close still close it. Pinned tabs carry a dot,
@@ -193,7 +204,11 @@ strings ~/Library/Application\ Support/Noty/notes.db | grep "some text from a no
 ## Build
 
 Requires the Swift toolchain from Command Line Tools (**Xcode is not needed**)
-and macOS 15+.
+and macOS 15+. A local release build produces a universal app; releases ship
+one DMG per architecture instead — `Noty.dmg` for Apple Silicon and
+`Noty-intel.dmg` for Intel, each a third smaller than a universal image, with
+its own Sparkle feed (`appcast.xml` / `appcast-intel.xml`) baked into the build
+so updates stay on the right architecture.
 
 ```sh
 ./scripts/fetch-sparkle.sh   # once — pulls the Sparkle binary framework
@@ -204,7 +219,8 @@ and macOS 15+.
 open build/Noty.app
 ```
 
-`build.sh` drives `swiftc` directly over `Sources/*.swift`, assembles the
+`build.sh` drives `swiftc` directly over `Sources/*.swift` for both supported
+architectures, combines the resulting binaries with `lipo`, assembles the
 `.app` bundle around `Info.plist`, embeds Sparkle, and signs it.
 
 Sparkle is optional. Without `Sparkle/Sparkle.framework` the app still builds —

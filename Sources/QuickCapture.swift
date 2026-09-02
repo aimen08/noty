@@ -103,7 +103,7 @@ private struct CaptureView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 7) {
                 Circle().fill(pal.dash).frame(width: 8, height: 8)
-                Text("Quick note")
+                Text(L10n.text("capture.title"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(pal.ink.opacity(0.55))
                 Spacer()
@@ -123,7 +123,7 @@ private struct CaptureView: View {
                 }
                 .onKeyPress(.escape) { onCancel(); return .handled }
 
-            Text("↩ save    ⇧↩ new line    esc cancel")
+            Text(L10n.text("capture.hint"))
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.4))
         }

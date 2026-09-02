@@ -37,6 +37,7 @@ final class DeckModel: ObservableObject {
     // Mirrored from Settings so SwiftUI re-renders when a preference flips.
     @Published var style: DeckStyle = Settings.deckStyle
     @Published var alwaysShown: Bool = Settings.deckAlwaysShown
+    @Published var pillHidden: Bool = Settings.deckPillHidden
     /// DeckGeom reads the scale straight from Settings; this mirror exists purely
     /// so a change to it invalidates the views that measure against it.
     @Published var scale: Double = Settings.deckScale
@@ -49,6 +50,10 @@ final class DeckModel: ObservableObject {
     /// Set while a tab is being dragged. The deck must not tidy itself away
     /// mid-drag just because the pointer strayed out of the edge strip.
     @Published var isDragging = false
+    /// The note mid-way off the deck: its in-deck sheet hides while the
+    /// floating panel tracks the pointer, but the view stays in the hierarchy —
+    /// removing it would kill the very drag gesture steering the detach.
+    @Published var detachingID: String?
     /// The note's height at the moment it opened. Its top is anchored from this
     /// and nothing else — recomputing the position from a height that changes
     /// mid-resize makes the note jump the instant the drag ends.
@@ -60,6 +65,7 @@ final class DeckModel: ObservableObject {
     func syncPreferences() {
         style = Settings.deckStyle
         alwaysShown = Settings.deckAlwaysShown
+        pillHidden = Settings.deckPillHidden
         scale = Settings.deckScale
         onLeftEdge = Settings.deckOnLeftEdge
         fontSize = Settings.noteFontSize
@@ -388,6 +394,12 @@ final class DeckController: NSObject {
 
     func expand(_ id: String) {
         noteActivity()
+        // Already floating somewhere on the screen — focus it there instead of
+        // opening the same body in two editors.
+        if FloatingNote.shared.noteID == id {
+            NSLog("Noty: expand \(id.prefix(6)) routed to floating note")
+            FloatingNote.shared.focus(); return
+        }
         model.openedHeight = Settings.noteSize.height
         model.openedTop = nil
         manager?.deckDidActivate(self)
@@ -415,6 +427,30 @@ final class DeckController: NSObject {
     private var openNoteIsPinned: Bool {
         guard let id = model.state.expandedID else { return false }
         return NoteStore.shared.note(id: id)?.pinned ?? false
+    }
+
+    /// The expanded note crossed the detach threshold: hand it to the floating
+    /// panel at its current on-screen position, so the paper continues under
+    /// the cursor rather than jumping to it.
+    func detachExpandedNote(at pointer: NSPoint) {
+        guard let id = model.state.expandedID else { return }
+        let size = Settings.floatingNoteSize
+        let frame = panel.frame
+        let onRight = !Settings.deckOnLeftEdge
+        let top = model.openedTop ?? (frame.height - size.height) / 2
+        let origin = NSPoint(x: onRight ? frame.maxX - size.width : frame.minX,
+                             y: frame.maxY - top - size.height)
+        model.detachingID = id
+        FloatingNote.shared.present(id: id, under: pointer,
+                                    grabOffset: NSPoint(x: pointer.x - origin.x,
+                                                        y: pointer.y - origin.y))
+    }
+
+    /// Mouse released: the note lives on the screen now, the deck steps back.
+    func finishDetach() {
+        FloatingNote.shared.endDrag(cancelled: false)
+        model.detachingID = nil
+        setState(.fan)
     }
 
     /// Dismiss the whole deck, note and tabs together.
@@ -515,17 +551,17 @@ final class DeckController: NSObject {
 
     func showContextMenu(at event: NSEvent) {
         let menu = NSMenu()
-        menu.addItem(withTitle: "New Note", action: #selector(AppDelegate.newNote), keyEquivalent: "")
-        menu.addItem(withTitle: "All Notes", action: #selector(AppDelegate.openAllNotes), keyEquivalent: "")
-        menu.addItem(withTitle: "Archive", action: #selector(AppDelegate.openArchive), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("menu.new_note"), action: #selector(AppDelegate.newNote), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("menu.all_notes"), action: #selector(AppDelegate.openAllNotes), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("menu.archive"), action: #selector(AppDelegate.openArchive), keyEquivalent: "")
         menu.addItem(.separator())
 
-        let overFS = NSMenuItem(title: "Show over full-screen apps",
+        let overFS = NSMenuItem(title: L10n.text("menu.show_over_fullscreen"),
                                 action: #selector(AppDelegate.toggleOverFullScreen), keyEquivalent: "")
         overFS.state = Settings.showOverFullScreen ? .on : .off
         menu.addItem(overFS)
 
-        let styleItem = NSMenuItem(title: "Deck style", action: nil, keyEquivalent: "")
+        let styleItem = NSMenuItem(title: L10n.text("menu.deck_style"), action: nil, keyEquivalent: "")
         let styleMenu = NSMenu()
         for s in DeckStyle.allCases {
             let it = NSMenuItem(title: s.title, action: #selector(AppDelegate.setDeckStyle(_:)), keyEquivalent: "")
@@ -536,10 +572,10 @@ final class DeckController: NSObject {
         styleItem.submenu = styleMenu
         menu.addItem(styleItem)
 
-        let fontItem = NSMenuItem(title: "Note font", action: nil, keyEquivalent: "")
+        let fontItem = NSMenuItem(title: L10n.text("menu.note_font"), action: nil, keyEquivalent: "")
         let fontMenu = NSMenu()
         for f in Ink.faces {
-            let it = NSMenuItem(title: f.name, action: #selector(AppDelegate.setNoteFont(_:)),
+            let it = NSMenuItem(title: f.localizedName, action: #selector(AppDelegate.setNoteFont(_:)),
                                 keyEquivalent: "")
             it.representedObject = f.body
             it.state = Ink.face.body == f.body ? .on : .off
@@ -548,10 +584,10 @@ final class DeckController: NSObject {
         fontItem.submenu = fontMenu
         menu.addItem(fontItem)
 
-        let textItem = NSMenuItem(title: "Text size", action: nil, keyEquivalent: "")
+        let textItem = NSMenuItem(title: L10n.text("menu.text_size"), action: nil, keyEquivalent: "")
         let textMenu = NSMenu()
         for entry in Settings.fontSizes {
-            let it = NSMenuItem(title: entry.name, action: #selector(AppDelegate.setFontSize(_:)),
+            let it = NSMenuItem(title: L10n.text(entry.nameKey), action: #selector(AppDelegate.setFontSize(_:)),
                                 keyEquivalent: "")
             it.representedObject = entry.size
             it.state = abs(Settings.noteFontSize - entry.size) < 0.01 ? .on : .off
@@ -560,10 +596,10 @@ final class DeckController: NSObject {
         textItem.submenu = textMenu
         menu.addItem(textItem)
 
-        let sizeItem = NSMenuItem(title: "Deck size", action: nil, keyEquivalent: "")
+        let sizeItem = NSMenuItem(title: L10n.text("menu.deck_size"), action: nil, keyEquivalent: "")
         let sizeMenu = NSMenu()
         for entry in Settings.deckSizes {
-            let it = NSMenuItem(title: entry.name, action: #selector(AppDelegate.setDeckScale(_:)),
+            let it = NSMenuItem(title: L10n.text(entry.nameKey), action: #selector(AppDelegate.setDeckScale(_:)),
                                 keyEquivalent: "")
             it.representedObject = entry.scale
             it.state = abs(Settings.deckScale - entry.scale) < 0.01 ? .on : .off
@@ -572,26 +608,26 @@ final class DeckController: NSObject {
         sizeItem.submenu = sizeMenu
         menu.addItem(sizeItem)
 
-        let keepOpen = NSMenuItem(title: "Keep deck open",
+        let keepOpen = NSMenuItem(title: L10n.text("menu.keep_deck_open"),
                                   action: #selector(AppDelegate.toggleDeckAlwaysShown), keyEquivalent: "")
         keepOpen.state = Settings.deckAlwaysShown ? .on : .off
         menu.addItem(keepOpen)
 
-        let leftEdge = NSMenuItem(title: "Dock deck to left edge",
+        let leftEdge = NSMenuItem(title: L10n.text("menu.dock_left"),
                                   action: #selector(AppDelegate.toggleDeckEdge), keyEquivalent: "")
         leftEdge.state = Settings.deckOnLeftEdge ? .on : .off
         menu.addItem(leftEdge)
 
         if NSScreen.screens.count > 1 {
-            let displayItem = NSMenuItem(title: "Display", action: nil, keyEquivalent: "")
+            let displayItem = NSMenuItem(title: L10n.text("menu.display"), action: nil, keyEquivalent: "")
             let displayMenu = NSMenu()
 
-            let allItem = NSMenuItem(title: "All Displays", action: #selector(AppDelegate.setDisplayTarget(_:)), keyEquivalent: "")
+            let allItem = NSMenuItem(title: L10n.text("display.all"), action: #selector(AppDelegate.setDisplayTarget(_:)), keyEquivalent: "")
             allItem.representedObject = "all"
             allItem.state = Settings.displayTarget == "all" ? .on : .off
             displayMenu.addItem(allItem)
 
-            let mainItem = NSMenuItem(title: "Main Display", action: #selector(AppDelegate.setDisplayTarget(_:)), keyEquivalent: "")
+            let mainItem = NSMenuItem(title: L10n.text("display.main"), action: #selector(AppDelegate.setDisplayTarget(_:)), keyEquivalent: "")
             mainItem.representedObject = "main"
             mainItem.state = Settings.displayTarget == "main" ? .on : .off
             displayMenu.addItem(mainItem)
@@ -601,7 +637,7 @@ final class DeckController: NSObject {
             for screen in NSScreen.screens {
                 guard let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value else { continue }
                 let name = screen.localizedName
-                let title = screen == NSScreen.main ? "\(name) (Main)" : name
+                let title = screen == NSScreen.main ? L10n.format("display.named_main", name) : name
                 let it = NSMenuItem(title: title, action: #selector(AppDelegate.setDisplayTarget(_:)), keyEquivalent: "")
                 it.representedObject = "id:\(id)"
                 it.state = Settings.displayTarget == "id:\(id)" ? .on : .off
@@ -611,39 +647,39 @@ final class DeckController: NSObject {
             menu.addItem(displayItem)
         }
 
-        let updates = NSMenuItem(title: "Check for Updates…",
+        let updates = NSMenuItem(title: L10n.text("menu.check_for_updates"),
                                  action: #selector(AppDelegate.checkForUpdates), keyEquivalent: "")
         menu.addItem(updates)
 
-        let autoUpdate = NSMenuItem(title: "Check automatically",
+        let autoUpdate = NSMenuItem(title: L10n.text("menu.check_automatically"),
                                     action: #selector(AppDelegate.toggleAutoUpdates), keyEquivalent: "")
         autoUpdate.state = Updater.shared.automaticallyChecks ? .on : .off
         autoUpdate.isEnabled = Updater.available
         menu.addItem(autoUpdate)
         menu.addItem(.separator())
 
-        let login = NSMenuItem(title: "Launch at login",
+        let login = NSMenuItem(title: L10n.text("menu.launch_at_login"),
                                action: #selector(AppDelegate.toggleLaunchAtLogin), keyEquivalent: "")
         login.state = Settings.launchAtLogin ? .on : .off
         menu.addItem(login)
         menu.addItem(.separator())
 
-        let exportItem = NSMenuItem(title: "Export", action: nil, keyEquivalent: "")
+        let exportItem = NSMenuItem(title: L10n.text("menu.export"), action: nil, keyEquivalent: "")
         let exportMenu = NSMenu()
-        exportMenu.addItem(withTitle: "Markdown (one file per note)…",
+        exportMenu.addItem(withTitle: L10n.text("export.markdown_per_note"),
                            action: #selector(AppDelegate.exportMarkdown), keyEquivalent: "")
-        exportMenu.addItem(withTitle: "Plain text (one file per note)…",
+        exportMenu.addItem(withTitle: L10n.text("export.plain_per_note"),
                            action: #selector(AppDelegate.exportPlainText), keyEquivalent: "")
-        exportMenu.addItem(withTitle: "Single document…",
+        exportMenu.addItem(withTitle: L10n.text("export.single_document"),
                            action: #selector(AppDelegate.exportSingleFile), keyEquivalent: "")
-        exportMenu.addItem(withTitle: "Sticky archive (.stickies)…",
+        exportMenu.addItem(withTitle: L10n.text("export.sticky_archive"),
                            action: #selector(AppDelegate.exportStickies), keyEquivalent: "")
         exportItem.submenu = exportMenu
         menu.addItem(exportItem)
-        menu.addItem(withTitle: "Import…", action: #selector(AppDelegate.importStickies), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("menu.import"), action: #selector(AppDelegate.importStickies), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Settings…", action: #selector(AppDelegate.openSettings), keyEquivalent: "")
-        menu.addItem(withTitle: "Quit Noty", action: #selector(AppDelegate.quit), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("menu.settings"), action: #selector(AppDelegate.openSettings), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("menu.quit"), action: #selector(AppDelegate.quit), keyEquivalent: "")
 
         for item in menu.items where item.action != nil {
             item.target = NSApp.delegate

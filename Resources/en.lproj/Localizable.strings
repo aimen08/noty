@@ -1,0 +1,208 @@
+"about.body" = "Sticky notes docked to the edge of your screen.\n\n⌥⌘N  new note      ⌥⌘A  all notes      ⌥⌘L  archive\nIn a note — Esc closes, ⌘F finds, ⌘. cycles colour, ⌘⌫ deletes.\n\nNotes are stored locally in an SQLite database; bodies are encrypted with AES-GCM. Your notes never leave this Mac — the only network request the app makes is the update check, which you can switch off.";
+
+"action.archive" = "Archive";
+"action.close" = "Close";
+"action.cycle_colour" = "Cycle colour";
+"action.delete" = "Delete";
+"action.find" = "Find";
+"action.pin" = "Pin";
+"action.restore" = "Restore";
+"action.undo" = "Undo";
+"action.unpin" = "Unpin";
+
+"capture.hint" = "↩ save    ⇧↩ new line    esc cancel";
+"capture.title" = "Quick note";
+
+"color.lemon" = "Lemon";
+"color.peach" = "Peach";
+"color.rose" = "Rose";
+"color.lilac" = "Lilac";
+"color.sky" = "Sky";
+"color.mint" = "Mint";
+"color.sand" = "Sand";
+"color.slate" = "Slate";
+
+"date.just_now" = "just now";
+
+"deck_style.colour_chips" = "Colour chips";
+"deck_style.labelled_tabs" = "Labelled tabs";
+
+"direction.auto_short" = "Auto";
+"direction.automatic" = "Automatic";
+"direction.left_to_right" = "Left to Right";
+"direction.right_to_left" = "Right to Left";
+
+"display.all" = "All Displays";
+"display.main" = "Main Display";
+"display.named_main" = "%@ (Main)";
+"edge.left" = "Left";
+"edge.right" = "Right";
+
+"export.archive_filename" = "Noty Archive-%@.stickies";
+"export.choose_folder" = "Choose a folder for %ld %@ files.";
+"export.default_note_name" = "note-%@";
+"export.document_title" = "Noty export";
+"export.empty_body" = "There are no notes yet.";
+"export.empty_title" = "Nothing to export";
+"export.failed_title" = "Export failed";
+"export.here" = "Export Here";
+"export.incomplete_body" = "Wrote %1$ld of %2$@. See Console for details.";
+"export.incomplete_title" = "Export incomplete";
+"export.markdown_filename" = "Noty Export-%@.md";
+"export.markdown_per_note" = "Markdown (one file per note)…";
+"export.metadata" = "%1$@ · created %2$@ · modified %3$@%4$@";
+"export.metadata_archived_suffix" = " · archived";
+"export.plain_per_note" = "Plain text (one file per note)…";
+"export.single_document" = "Single document…";
+"export.sticky_archive" = "Sticky archive (.stickies)…";
+
+"font.system" = "System";
+
+"help.cycle_colour" = "Cycle colour  ⌘.";
+"help.find" = "Find  ⌘F";
+"help.new_note" = "New Note  ⌥⌘N";
+"help.pick_colour" = "Cycle colour · right-click to pick";
+"help.pin" = "Pin so it stays open  ⌘P";
+"help.settings" = "Settings  ⌘,";
+"help.task" = "Task  ⌘T";
+"help.text_direction" = "Text direction: %@";
+"help.unpin" = "Unpin — ⌘P";
+
+"import.added" = "Added %ld notes.";
+"import.choose_files" = "Choose a .stickies archive, or Markdown / text files.";
+"import.complete_title" = "Import complete";
+"import.problems_body" = "%1$@ Could not read: %2$@";
+"import.problems_title" = "Import finished with problems";
+
+"key.escape" = "esc";
+"key.space" = "Space";
+"key.unknown" = "key %u";
+
+"language.english" = "English";
+"language.simplified_chinese" = "简体中文";
+"language.system" = "System Default";
+
+"library.all_notes" = "All Notes";
+"library.archive" = "Archive";
+"library.no_archive" = "Nothing archived";
+"library.no_matches" = "No matches";
+"library.no_notes" = "No notes yet";
+"library.search_placeholder" = "Search all notes";
+"library.select_note" = "Select a note";
+
+"menu.about" = "About Noty";
+"menu.all_notes" = "All Notes";
+"menu.archive" = "Archive";
+"menu.bigger_text" = "Bigger Text";
+"menu.check_automatically" = "Check automatically";
+"menu.check_for_updates" = "Check for Updates…";
+"menu.copy" = "Copy";
+"menu.cut" = "Cut";
+"menu.deck_size" = "Deck size";
+"menu.deck_style" = "Deck style";
+"menu.display" = "Display";
+"menu.dock_left" = "Dock deck to left edge";
+"menu.edit" = "Edit";
+"menu.export" = "Export";
+"menu.hide" = "Hide Noty";
+"menu.import" = "Import…";
+"menu.keep_deck_open" = "Keep deck open";
+"menu.launch_at_login" = "Launch at login";
+"menu.new_note" = "New Note";
+"menu.note_font" = "Note font";
+"menu.paste" = "Paste";
+"menu.quit" = "Quit Noty";
+"menu.redo" = "Redo";
+"menu.select_all" = "Select All";
+"menu.settings" = "Settings…";
+"menu.show_over_fullscreen" = "Show over full-screen apps";
+"menu.smaller_text" = "Smaller Text";
+"menu.text_size" = "Text size";
+"menu.undo" = "Undo";
+
+"note.edited" = "Edited %@";
+"note.empty" = "Empty note";
+"note.find_placeholder" = "Find in note";
+"note.new_tab" = "New note";
+"note.not_saved" = "Not saved";
+"note.saved" = "Saved · %@";
+"note.untitled" = "New note";
+"notes.count" = "%ld notes";
+"notes.more" = "%ld more notes";
+
+"settings.deck.caption" = "How the notes sit on the screen edge.";
+"settings.deck.detection_area" = "Detection area";
+"settings.deck.detection_help" = "How far from the edge the pointer wakes the deck — %ld pt.";
+"settings.deck.display" = "Display";
+"settings.deck.drag_help" = "Hold ⌥ Option and drag the pill to move it to any screen, edge, or height.";
+"settings.deck.edge" = "Edge";
+"settings.deck.hover_open" = "Open a note by hovering its tab";
+"settings.deck.hover_open_help" = "Rest on a tab and it opens, no click needed. Off by default.";
+"settings.deck.hover_preview" = "Show preview on hover";
+"settings.deck.hover_preview_help" = "Hover over a tab to peek at its contents without opening it.";
+"settings.deck.hide_pill" = "Hide the deck completely";
+"settings.deck.hide_pill_help" = "Nothing shows at rest — no pill, no dashes. Slide the pointer to the screen edge to wake the tabs.";
+"settings.deck.keep_open" = "Keep the deck open";
+"settings.deck.keep_open_help" = "Tabs stay on the edge with their labels showing, instead of folding back into the pill when the pointer leaves.";
+"settings.deck.language" = "Language";
+"settings.deck.language_help" = "Noty restarts automatically when you change the language.";
+"settings.deck.size" = "Size";
+"settings.deck.size_help" = "Scales the tabs, their labels, the chips and the resting pill together.";
+"settings.deck.style" = "Style";
+"settings.deck.tab" = "Deck";
+
+"settings.notes.caption" = "Type and formatting inside a note.";
+"settings.notes.font" = "Font";
+"settings.notes.font_size_value" = "%.1f pt";
+"settings.notes.markdown" = "Style Markdown as you type";
+"settings.notes.markdown_help" = "**bold**, *italic*, `code`, ~~struck~~, # headings, > quotes and [links](url), which ⌘-click opens. The text stays plain — only its appearance changes.";
+"settings.notes.note_size" = "Note size";
+"settings.notes.tab" = "Notes";
+"settings.notes.text_size" = "Text size";
+
+"settings.shortcuts.caption" = "Click a field and press the keys; ⌫ clears one.";
+"settings.shortcuts.global" = "From any app";
+"settings.shortcuts.hint" = "In-note shortcuts only fire while a note is open, so a key with no modifier is fine there.";
+"settings.shortcuts.in_note" = "In an open note";
+"settings.shortcuts.tab" = "Shortcuts";
+
+"settings.updates.automatic" = "Check for updates automatically";
+"settings.updates.caption" = "Noty fetches one file to see whether a newer version exists.";
+"settings.updates.check_now" = "Check Now";
+"settings.updates.privacy" = "Fetching appcast.xml is the only network request Noty ever makes — no accounts, no analytics, and nothing about a note leaves the Mac. Every update is checked against the EdDSA public key in the app; one signed by any other key is refused.";
+"settings.updates.tab" = "Updates";
+"settings.updates.this_copy" = "This copy";
+"settings.updates.version" = "Noty %1$@  (build %2$@)";
+"settings.window_title" = "Noty Settings";
+
+"shortcut.all_notes" = "All Notes";
+"shortcut.archive_note" = "Archive note";
+"shortcut.archive_window" = "Archive window";
+"shortcut.duplicate" = "Already used by another shortcut";
+"shortcut.new_note" = "New note";
+"shortcut.press_keys" = "Press keys…";
+"shortcut.quick_capture" = "Quick capture";
+"shortcut.toggle_task" = "Toggle task";
+
+"size.default" = "Default";
+"size.extra_large" = "Extra Large";
+"size.huge" = "Huge";
+"size.large" = "Large";
+"size.medium" = "Medium";
+"size.small" = "Small";
+
+"undo.note_deleted" = "Note deleted";
+
+"updates.install_sparkle" = "Run ./scripts/fetch-sparkle.sh and rebuild to add the updater.";
+"updates.last_checked" = "Last checked %@.";
+"updates.no_sparkle_status" = "This build has no Sparkle framework, so it cannot update itself.";
+"updates.not_checked" = "No check yet.";
+"updates.unavailable_body" = "This copy of Noty was built without the Sparkle framework. Run ./scripts/fetch-sparkle.sh and rebuild to enable automatic updates.";
+"updates.unavailable_title" = "Updates are not available in this build";
+
+"welcome.note_body" = "Welcome to Noty\n\nYour notes live at the edge of the screen. Slide the pointer to the right edge and the deck fans out.\n\n⌥⌘N  new note\n⌥⌘A  all notes\n⌥⌘L  archive\n\nInside a note: Esc closes, ⌘F finds, ⌘. cycles the colour, ⌘⌫ deletes with ten seconds to undo.";
+
+"width.narrow" = "Narrow";
+"width.standard" = "Standard";
+"width.very_wide" = "Very wide";
+"width.wide" = "Wide";

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>notes.count</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@notes@</string>
+        <key>notes</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>%ld note</string>
+            <key>other</key>
+            <string>%ld notes</string>
+        </dict>
+    </dict>
+    <key>notes.more</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@notes@</string>
+        <key>notes</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>%ld more note</string>
+            <key>other</key>
+            <string>%ld more notes</string>
+        </dict>
+    </dict>
+    <key>export.choose_folder</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>Choose a folder for %#@files@.</string>
+        <key>files</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>%ld %@ file</string>
+            <key>other</key>
+            <string>%ld %@ files</string>
+        </dict>
+    </dict>
+    <key>import.added</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@notes@</string>
+        <key>notes</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>Added %ld note.</string>
+            <key>other</key>
+            <string>Added %ld notes.</string>
+        </dict>
+    </dict>
+</dict>
+</plist>

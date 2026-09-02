@@ -528,7 +528,7 @@ struct NoteTextDirectionLabel: View {
                 Image(systemName: symbol)
                     .font(.system(size: 11, weight: .semibold))
             } else {
-                Text("Auto")
+                Text(L10n.text("direction.auto_short"))
                     .font(.system(size: 9.5, weight: .semibold))
             }
         }
@@ -559,7 +559,7 @@ struct NoteTextDirectionMenu: View {
         // overriding the label's foreground style (most visibly for "Auto").
         .tint(foreground)
         .fixedSize()
-        .help("Text direction: \(direction.title)")
+        .help(L10n.format("help.text_direction", direction.title))
     }
 }
 
@@ -572,6 +572,7 @@ struct NoteEditorView: View {
     @State private var text = ""
     @State private var saveWork: DispatchWorkItem?
     @State private var savedAt: Date?
+    @State private var detaching = false
     @FocusState private var findFocused: Bool
 
     private var pal: NoteColor { note.palette }
@@ -580,6 +581,7 @@ struct NoteEditorView: View {
         HStack(spacing: 0) {
             if onRight { gutter; sheet } else { sheet; gutter }
         }
+        .opacity(deck.detachingID == note.id ? 0 : 1)
         .frame(width: deck.noteSize.width, height: deck.noteSize.height)
         .background(
             noteShape
@@ -645,6 +647,27 @@ struct NoteEditorView: View {
                     .foregroundStyle(pal.ink.opacity(0.22))
                     .frame(width: 1)
             }
+            // Grab the tab and pull the note off the deck: past the threshold
+            // the floating panel takes over under the cursor, and the sheet
+            // here hides but stays in the hierarchy — removing it would end
+            // this very gesture mid-drag.
+            .gesture(DragGesture(minimumDistance: 8, coordinateSpace: .global)
+                .onChanged { v in
+                    if detaching {
+                        FloatingNote.shared.dragTo(NSEvent.mouseLocation)
+                    } else if (onRight ? -v.translation.width : v.translation.width) > 40 {
+                        detaching = true
+                        deck.isDragging = true
+                        flush()
+                        controller.detachExpandedNote(at: NSEvent.mouseLocation)
+                    }
+                }
+                .onEnded { _ in
+                    guard detaching else { return }
+                    detaching = false
+                    deck.isDragging = false
+                    controller.finishDetach()
+                })
     }
 
     private var header: some View {
@@ -654,7 +677,8 @@ struct NoteEditorView: View {
                 .foregroundStyle(pal.ink.opacity(0.92))
                 .lineLimit(1)
             Spacer(minLength: 6)
-            Text(savedAt.map { "Saved · \(Fmt.ago($0))" } ?? "Not saved")
+            Text(savedAt.map { L10n.format("note.saved", Fmt.ago($0)) }
+                 ?? L10n.text("note.not_saved"))
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.42))
             Button { NoteStore.shared.togglePin(id: note.id) } label: {
@@ -666,7 +690,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(note.pinned ? 0.85 : 0.4))
-            .help(note.pinned ? "Unpin — ⌘P" : "Pin so it stays open  ⌘P")
+            .help(note.pinned ? L10n.text("help.unpin") : L10n.text("help.pin"))
 
             NoteTextDirectionMenu(direction: note.textDirection,
                                   foreground: pal.ink.opacity(0.5)) {
@@ -681,7 +705,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(0.5))
-            .help("Task  ⌘T")
+            .help(L10n.text("help.task"))
             Button { deck.findQuery = deck.findQuery == nil ? "" : nil } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 10.5, weight: .semibold))
@@ -690,7 +714,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(0.5))
-            .help("Find  ⌘F")
+            .help(L10n.text("help.find"))
         }
         .padding(.horizontal, 14)
         .frame(height: 32)
@@ -700,7 +724,7 @@ struct NoteEditorView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 10)).foregroundStyle(pal.ink.opacity(0.45))
-            TextField("Find in note", text: Binding(
+            TextField(L10n.text("note.find_placeholder"), text: Binding(
                 get: { deck.findQuery ?? "" },
                 set: { deck.findQuery = $0; deck.bridge.recount($0) }))
                 .textFieldStyle(.plain)
@@ -739,18 +763,18 @@ struct NoteEditorView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .help(c.name)
+                .help(c.localizedName)
             }
             Spacer(minLength: 8)
-            footerButton("Archive") {
+            footerButton(L10n.text("action.archive")) {
                 NoteStore.shared.setArchived(id: note.id, true)
                 controller.collapse()
             }
-            footerButton("Delete") {
+            footerButton(L10n.text("action.delete")) {
                 NoteStore.shared.delete(id: note.id)
                 controller.collapse()
             }
-            footerButton("Close") { controller.collapse() }
+            footerButton(L10n.text("action.close")) { controller.collapse() }
         }
         .padding(.horizontal, 14)
         .frame(height: 34)

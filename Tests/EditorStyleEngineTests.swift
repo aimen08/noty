@@ -23,6 +23,7 @@ struct EditorStyleEngineTests {
         testTextDirectionConfiguration()
         testLegacyArchiveDefaultsToAutomaticDirection()
         testTextDirectionDatabaseMigration()
+        LocalizationTests.run { check($0, $1) }
 
         guard failures == 0 else {
             fputs("EditorStyleEngineTests: \(failures) failure(s)\n", stderr)
