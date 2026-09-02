@@ -149,13 +149,13 @@ jobs:
           ./scripts/make-appcast.sh \
             "build/Noty-${VERSION}.dmg" \
             "$KEYFILE" \
-            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Noty-${VERSION}.dmg"
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Noty.dmg"
           NOTES="$(cat build/release-notes.html)" \
           OUT=appcast-intel.xml \
           ./scripts/make-appcast.sh \
             "build/Noty-${VERSION}-intel.dmg" \
             "$KEYFILE" \
-            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Noty-${VERSION}-intel.dmg"
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Noty-intel.dmg"
           rm -f "$KEYFILE"
 
       - name: Publish the release
@@ -166,22 +166,22 @@ jobs:
           TAG: ${{ steps.v.outputs.tag }}
         run: |
           V="$VERSION"
-          # A stable filename as well, so the website's download link never has to
-          # be edited. Sparkle keeps using the versioned one named in the appcast.
-          cp "build/Noty-${V}.dmg" build/Noty.dmg
-          cp "build/Noty-${V}-intel.dmg" build/Noty-intel.dmg
+          # One asset per architecture. The stable names serve both needs at
+          # once: the website's /latest/ link never changes, and the appcast's
+          # URL is already versioned by the tag in its path — shipping a
+          # versioned filename as well just doubled every release page.
+          mv "build/Noty-${V}.dmg" build/Noty.dmg
+          mv "build/Noty-${V}-intel.dmg" build/Noty-intel.dmg
           # --target pins the tag to the commit this job built, not to whatever
           # main has drifted to while it ran.
           gh release create "$TAG" \
-            "build/Noty-${V}.dmg" build/Noty.dmg \
-            "build/Noty-${V}-intel.dmg" build/Noty-intel.dmg \
+            build/Noty.dmg build/Noty-intel.dmg \
             --title "Noty ${V}" \
             --target "$GITHUB_SHA" \
             --notes-file build/release-notes.md \
             --latest || \
           gh release upload "$TAG" \
-            "build/Noty-${V}.dmg" build/Noty.dmg \
-            "build/Noty-${V}-intel.dmg" build/Noty-intel.dmg --clobber
+            build/Noty.dmg build/Noty-intel.dmg --clobber
 
       - name: Commit the appcast so Sparkle can see the update
         if: steps.v.outputs.skip != 'true'
