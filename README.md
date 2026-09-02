@@ -158,7 +158,9 @@ import reads that back. All Notes shows a `done/total` count per note.
   off the deck — it becomes a floating sticky wherever you drop it, draggable
   by its header, across displays, and resizable from any edge or corner. It
   remembers the size you stretch it to. Idle a minute and it tucks itself back to
-  the edge, exactly like a note on the deck; pin it and it stays. One floats
+  the edge, exactly like a note on the deck. Unpinned it stacks like any
+  window — other windows can cover it; pin it and it stays on top and never
+  tucks. One floats
   at a time — pulling out a second tucks the first.
 - **Hide the deck completely.** Settings → Deck: nothing shows at rest — no
   pill, no dashes. The edge strip still wakes the tabs on hover. Off by

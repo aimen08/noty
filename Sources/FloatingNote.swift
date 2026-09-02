@@ -79,7 +79,20 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     func endDrag(cancelled: Bool) {
         if cancelled { tuck(animated: false); return }
         lastActivity = Date()
+        applyLevel()
         panel?.makeKeyAndOrderFront(nil)
+    }
+
+    /// The pin decides the altitude. Unpinned, the note is an ordinary window —
+    /// covered when you work elsewhere, raised when you click it. Pinned, it
+    /// stays above everything, the way a sticky stuck to the bezel would.
+    /// During the pull itself the panel stays at .floating regardless, so it
+    /// cannot slide underneath the deck's own panel mid-drag.
+    func applyLevel() {
+        guard let panel, let id = noteID else { return }
+        let pinned = NoteStore.shared.note(id: id)?.pinned ?? false
+        let level: NSWindow.Level = pinned ? .floating : .normal
+        if panel.level != level { panel.level = level }
     }
 
     func focus() {
@@ -136,6 +149,7 @@ final class FloatingNote: NSObject, NSWindowDelegate {
             guard let note = NoteStore.shared.note(id: id), !note.archived else {
                 self.tuck(animated: false); return
             }
+            self.applyLevel()
             if note.pinned || panel.isKeyWindow
                 || panel.frame.insetBy(dx: -8, dy: -8).contains(NSEvent.mouseLocation) {
                 self.lastActivity = Date()
@@ -214,7 +228,10 @@ private struct FloatingNoteView: View {
                 .foregroundStyle(pal.ink.opacity(0.92))
                 .lineLimit(1)
             Spacer(minLength: 6)
-            Button { NoteStore.shared.togglePin(id: note.id) } label: {
+            Button {
+                NoteStore.shared.togglePin(id: note.id)
+                FloatingNote.shared.applyLevel()
+            } label: {
                 Image(systemName: note.pinned ? "pin.fill" : "pin")
                     .font(.system(size: 11, weight: .semibold))
                     .rotationEffect(.degrees(note.pinned ? 0 : 32))
