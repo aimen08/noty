@@ -95,8 +95,14 @@ final class FloatingNote: NSObject, NSWindowDelegate {
         if panel.level != level { panel.level = level }
     }
 
+    /// Clicking the note's tab on the deck lands here. The note may be an
+    /// unpinned normal-level window buried under the active app, and a plain
+    /// makeKey only fronts it within Noty — orderFrontRegardless is what lifts
+    /// it above the app you are actually in.
     func focus() {
         lastActivity = Date()
+        applyLevel()
+        panel?.orderFrontRegardless()
         panel?.makeKeyAndOrderFront(nil)
     }
 
