@@ -396,7 +396,10 @@ final class DeckController: NSObject {
         noteActivity()
         // Already floating somewhere on the screen — focus it there instead of
         // opening the same body in two editors.
-        if FloatingNote.shared.noteID == id { FloatingNote.shared.focus(); return }
+        if FloatingNote.shared.noteID == id {
+            NSLog("Noty: expand \(id.prefix(6)) routed to floating note")
+            FloatingNote.shared.focus(); return
+        }
         model.openedHeight = Settings.noteSize.height
         model.openedTop = nil
         manager?.deckDidActivate(self)

@@ -101,9 +101,21 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     /// it above the app you are actually in.
     func focus() {
         lastActivity = Date()
-        applyLevel()
-        panel?.orderFrontRegardless()
-        panel?.makeKeyAndOrderFront(nil)
+        guard let panel else {
+            NSLog("Noty: focus — no floating panel")
+            return
+        }
+        NSLog("Noty: focus lift  visible=\(panel.isVisible) level=\(panel.level.rawValue)")
+        // Front-of-level for a background app's normal-level window is the
+        // flaky corner of AppKit ordering. Lift at floating level so the raise
+        // is unambiguous, then settle back to whatever the pin says once the
+        // window is up — a click elsewhere can cover an unpinned note again.
+        panel.level = .floating
+        panel.orderFrontRegardless()
+        panel.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            self?.applyLevel()
+        }
     }
 
     // MARK: Tucking back
