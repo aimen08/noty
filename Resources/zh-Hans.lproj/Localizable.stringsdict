@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>notes.count</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@notes@</string>
+        <key>notes</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>%ld 篇便笺</string>
+            <key>other</key>
+            <string>%ld 篇便笺</string>
+        </dict>
+    </dict>
+    <key>notes.more</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@notes@</string>
+        <key>notes</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>另外 %ld 篇便笺</string>
+            <key>other</key>
+            <string>另外 %ld 篇便笺</string>
+        </dict>
+    </dict>
+    <key>export.choose_folder</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@files@</string>
+        <key>files</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>请选择用于保存 %ld 个 %@ 文件的文件夹。</string>
+            <key>other</key>
+            <string>请选择用于保存 %ld 个 %@ 文件的文件夹。</string>
+        </dict>
+    </dict>
+    <key>import.added</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@notes@</string>
+        <key>notes</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>ld</string>
+            <key>one</key>
+            <string>已添加 %ld 篇便笺。</string>
+            <key>other</key>
+            <string>已添加 %ld 篇便笺。</string>
+        </dict>
+    </dict>
+</dict>
+</plist>

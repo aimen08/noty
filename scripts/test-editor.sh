@@ -16,6 +16,7 @@ swiftc -parse-as-library -swift-version 5 \
     -target arm64-apple-macosx15.0 \
     -sdk "$SDK" \
     "${APP_SOURCES[@]}" \
+    "$ROOT/Tests/LocalizationTests.swift" \
     "$ROOT/Tests/EditorStyleEngineTests.swift" \
     -o "$OUT/EditorStyleEngineTests"
 
