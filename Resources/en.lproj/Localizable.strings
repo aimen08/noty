@@ -136,6 +136,10 @@
 "No check yet." = "No check yet.";
 "Last checked %@." = "Last checked %@.";
 "This build has no Sparkle framework, so it cannot update itself." = "This build has no Sparkle framework, so it cannot update itself.";
+"Language" = "Language";
+"Follow System" = "Follow System";
+"Restart Noty to use the selected language." = "Restart Noty to use the selected language.";
+"Restart Noty" = "Restart Noty";
 "Space" = "Space";
 "key %d" = "key %d";
 

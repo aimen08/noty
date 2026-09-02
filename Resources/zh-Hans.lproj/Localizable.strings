@@ -136,6 +136,10 @@
 "No check yet." = "尚未检查。";
 "Last checked %@." = "上次检查时间：%@。";
 "This build has no Sparkle framework, so it cannot update itself." = "此版本没有 Sparkle 框架，无法自动更新。";
+"Language" = "语言";
+"Follow System" = "跟随系统";
+"Restart Noty to use the selected language." = "重新启动 Noty 以使用所选语言。";
+"Restart Noty" = "重新启动 Noty";
 "Space" = "空格";
 "key %d" = "按键 %d";
 

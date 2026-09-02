@@ -1,6 +1,26 @@
 import Foundation
 import ServiceManagement
 
+/// Languages that Noty can force for its next launch. Add one case and its
+/// matching .lproj resource directory to make another language available.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case english = "en"
+    case simplifiedChinese = "zh-Hans"
+
+    var id: String { rawValue }
+
+    /// Language names are autonyms so every option remains recognizable even
+    /// when the current interface is displayed in another language.
+    var displayName: String {
+        switch self {
+        case .system: String(localized: "Follow System")
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        }
+    }
+}
+
 /// Thin UserDefaults wrapper for the handful of togglable preferences.
 enum Settings {
     private static let d = UserDefaults.standard
@@ -10,6 +30,26 @@ enum Settings {
     /// a locale-dependent value.
     static func displayName(for stableName: String) -> String {
         String(localized: String.LocalizationValue(stableName))
+    }
+
+    /// The selected value is stable across translations. Apple reads
+    /// AppleLanguages when the process starts, so changes apply after relaunch.
+    static var appLanguage: AppLanguage {
+        get {
+            guard let raw = d.string(forKey: "appLanguage"),
+                  let language = AppLanguage(rawValue: raw) else { return .system }
+            return language
+        }
+        set {
+            d.set(newValue.rawValue, forKey: "appLanguage")
+            if newValue == .system {
+                d.removeObject(forKey: "AppleLanguages")
+            } else {
+                d.set([newValue.rawValue], forKey: "AppleLanguages")
+            }
+            // Relaunch may happen immediately after the picker changes.
+            d.synchronize()
+        }
     }
 
     static var showOverFullScreen: Bool {

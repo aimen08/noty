@@ -183,12 +183,34 @@ required_settings = {
     "Last checked %@.": "上次检查时间：%@。",
     "No check yet.": "尚未检查。",
     "This build has no Sparkle framework, so it cannot update itself.": "此版本没有 Sparkle 框架，无法自动更新。",
+    "Language": "语言",
+    "Follow System": "跟随系统",
+    "Restart Noty to use the selected language.": "重新启动 Noty 以使用所选语言。",
+    "Restart Noty": "重新启动 Noty",
 }
 for key, expected_zh in required_settings.items():
     assert key in en, f"missing Task 3 key in en: {key}"
     assert key in zh, f"missing Task 3 key in zh-Hans: {key}"
     assert en[key] == key, f"English Task 3 value must preserve source text: {key}"
     assert zh[key] == expected_zh, f"unexpected zh-Hans Task 3 value for {key!r}"
+
+# Language selection remains native and extensible: stable locale identifiers
+# are persisted, AppleLanguages is updated for the next launch, and the picker
+# is generated from one central list rather than hard-coded UI branches.
+settings_source = (root / "Sources" / "Settings.swift").read_text()
+settings_window_source = (root / "Sources" / "SettingsWindow.swift").read_text()
+app_delegate_source = (root / "Sources" / "AppDelegate.swift").read_text()
+assert 'enum AppLanguage: String, CaseIterable, Identifiable' in settings_source
+assert 'case system' in settings_source and 'case english = "en"' in settings_source
+assert 'case simplifiedChinese = "zh-Hans"' in settings_source
+assert 'd.removeObject(forKey: "AppleLanguages")' in settings_source
+assert 'd.set([newValue.rawValue], forKey: "AppleLanguages")' in settings_source
+assert 'd.synchronize()' in settings_source
+assert 'ForEach(AppLanguage.allCases)' in settings_window_source
+assert 'Settings.appLanguage = appLanguage' in settings_window_source
+assert 'Button("Restart Noty")' in settings_window_source
+assert 'NSWorkspace.OpenConfiguration()' in app_delegate_source
+assert 'configuration.createsNewApplicationInstance = true' in app_delegate_source
 
 # Task 4 note, library, capture, undo, and transfer workflows.
 task4_sources = {

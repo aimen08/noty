@@ -209,7 +209,8 @@ open build/Noty.app
 
 Localization resources live in `Resources/*.lproj`; `build.sh` copies them
 into the app bundle automatically. When adding a language, maintain both
-`Localizable.strings` and `Localizable.stringsdict`, then run
+`Localizable.strings` and `Localizable.stringsdict`, add its stable language
+code and autonym to `AppLanguage` in `Sources/Settings.swift`, then run
 `./scripts/test-localization.sh`.
 
 Sparkle is optional. Without `Sparkle/Sparkle.framework` the app still builds —

@@ -12,6 +12,7 @@
 - AppKit 菜单、窗口标题、提示框、动态属性和传入普通 `String` 的文案使用 `String(localized:)`。
 - 带数量变化的文案使用 `Localizable.stringsdict` 和 `String.localizedStringWithFormat`，由系统处理单复数规则。
 - `RelativeDateTimeFormatter` 和 `DateFormatter` 继续跟随 `Locale.current`；仅翻译代码中手写的固定文案，例如 `just now`。
+- 更新设置页提供「跟随系统 / English / 简体中文」语言选择。选择值使用稳定的 BCP 47 语言代码写入应用域 `AppleLanguages`，重新启动后由 `Bundle` 原生加载对应资源；「跟随系统」会移除该覆盖值。
 
 翻译资源采用传统的 `.lproj/Localizable.strings`，而不是在构建时编译 `Localizable.xcstrings`。两者都属于 Apple 原生方案，但当前项目通过 `swiftc` 和 shell 脚本直接组装应用。提交已编译可读取的 `.strings` 文件，可以继续满足「仅需 Command Line Tools，不要求完整 Xcode」的构建约束。
 
@@ -86,11 +87,15 @@ SwiftUI 组件如果接收界面文案，应优先把参数类型声明为 `Loca
 - 数量为 `0`、`1`、`2` 时，英文单复数正确，中文句子自然。
 - 相对时间和日期遵循当前系统区域设置。
 - 切换语言不会修改现有笔记、快捷键、设置值或归档文件结构。
+- 更新页可以选择跟随系统、英文或简体中文；修改后显示重新启动操作，重启后整套界面使用所选语言。
 - `./build.sh debug` 和 `./scripts/test-editor.sh` 通过。
 - 构建产物包含英文和简体中文 `.lproj` 资源，且 `plutil -lint` 检查所有 `.strings`、`.stringsdict` 文件通过。
 
+## 新增语言
+
+在 `AppLanguage` 增加一个使用标准语言代码的枚举项和该语言自己的显示名称，再添加同名 `.lproj` 目录，并完整维护 `Localizable.strings` 与 `Localizable.stringsdict`。设置页由 `AppLanguage.allCases` 自动生成选项，因此无需修改切换或重启逻辑。例如日语使用 `ja` 和 `Resources/ja.lproj/`。
+
 ## 暂不包含
 
-- 应用内语言切换器。语言由 macOS 管理，切换后重新启动应用生效。
 - README、网站和发布说明的翻译。
 - 简体中文以外的新语言。后续可按相同目录结构添加。

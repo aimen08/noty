@@ -33,6 +33,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Actions
 
+    /// Start this app bundle as a new process so Foundation reads the updated
+    /// AppleLanguages preference, then close the old instance.
+    func relaunch() {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(
+            at: Bundle.main.bundleURL,
+            configuration: configuration
+        ) { application, _ in
+            DispatchQueue.main.async {
+                guard application != nil else {
+                    NSSound.beep()
+                    return
+                }
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
     @objc func newNote() {
         let note = NoteStore.shared.create()
         deckManager.focused?.expand(note.id)

@@ -112,6 +112,14 @@ final class SettingsModel: ObservableObject {
         didSet { guard !loading else { return }; Updater.shared.automaticallyChecks = autoUpdate }
     }
     @Published var updateStatus: String = ""
+    @Published var appLanguage: AppLanguage {
+        didSet {
+            guard !loading else { return }
+            Settings.appLanguage = appLanguage
+            restartRequired = appLanguage != launchLanguage
+        }
+    }
+    @Published private(set) var restartRequired = false
 
     @Published var fontName: String     { didSet { Settings.noteFontName = fontName; apply() } }
     @Published var fontSize: Double     { didSet { Settings.noteFontSize = fontSize; apply() } }
@@ -136,6 +144,7 @@ final class SettingsModel: ObservableObject {
     @Published var scSmaller: Shortcut { didSet { Settings.scSmaller = scSmaller } }
 
     private var loading = true
+    private let launchLanguage = Settings.appLanguage
 
     init() {
         deckStyle = Settings.deckStyle
@@ -148,6 +157,7 @@ final class SettingsModel: ObservableObject {
         overFullScreen = Settings.showOverFullScreen
         launchAtLogin = Settings.launchAtLogin
         autoUpdate = Updater.available && Updater.shared.automaticallyChecks
+        appLanguage = Settings.appLanguage
         fontName = Settings.noteFontName
         fontSize = Settings.noteFontSize
         markdown = Settings.markdownStyling
@@ -205,6 +215,10 @@ final class SettingsModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             self?.refreshUpdateStatus()
         }
+    }
+
+    func restartNoty() {
+        (NSApp.delegate as? AppDelegate)?.relaunch()
     }
 
     /// Warn about a combination already used by another Noty shortcut.
@@ -444,6 +458,26 @@ struct SettingsView: View {
             if !Updater.available {
                 Text("Run ./scripts/fetch-sparkle.sh and rebuild to add the updater.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+        }
+        Divider().padding(.vertical, 4)
+        row("Language") {
+            VStack(alignment: .leading, spacing: 6) {
+                Picker("", selection: $model.appLanguage) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 180)
+                if model.restartRequired {
+                    HStack(spacing: 10) {
+                        Text("Restart Noty to use the selected language.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Button("Restart Noty") { model.restartNoty() }
+                    }
+                }
             }
         }
         Divider().padding(.vertical, 4)
