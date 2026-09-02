@@ -285,6 +285,10 @@ struct Note: Identifiable, Hashable {
 
     var displayTitle: String { title.isEmpty ? String(localized: "New note") : title }
 
+    /// Stable title used in exported files and filenames. Export formats must
+    /// not change when the app's presentation locale changes.
+    var exportTitle: String { title.isEmpty ? "New note" : title }
+
     /// Completed / total, or nil when the note holds no tasks.
     var taskProgress: (done: Int, total: Int)? {
         var done = 0, total = 0

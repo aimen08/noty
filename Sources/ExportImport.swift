@@ -104,7 +104,7 @@ enum Transfer {
 
         let doc = notes.map { n -> String in
             """
-            ## \(n.displayTitle)
+            ## \(n.exportTitle)
             <!-- \(n.palette.name) · created \(Fmt.stamp.string(from: n.created)) · \
             modified \(Fmt.stamp.string(from: n.modified))\(n.archived ? " · archived" : "") -->
 
@@ -207,7 +207,7 @@ enum Transfer {
     // MARK: Helpers
 
     private static func safeName(_ n: Note) -> String {
-        let raw = n.displayTitle
+        let raw = n.exportTitle
         let cleaned = raw.components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|\n\r\t"))
             .joined(separator: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)

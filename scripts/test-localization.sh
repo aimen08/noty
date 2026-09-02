@@ -54,6 +54,7 @@ assert 'String(format: String(localized: "Last checked %@.")' in settings_window
     "update status must format a localized complete sentence"
 assert 'String(localized: "Space")' in shortcut, "space shortcut label must be localized"
 assert 'String(localized: "key %d")' in shortcut, "unknown shortcut labels must be localized"
+assert 'var exportTitle: String' in core, "exports need a stable title independent of UI locale"
 
 def keys(locale, name):
     source = root / "Resources" / f"{locale}.lproj" / name
@@ -227,6 +228,39 @@ assert 'Text("Note deleted")' in undo_toast, "undo copy must keep a localization
 assert 'StickyNote' in transfer and 'colorName = n.palette.name' in transfer, \
     "archive colorName must remain the stable English persistence value"
 assert not re.search(r"note\\\(count == 1 \?", transfer), "transfer code must not hand-build plural suffixes"
+assert "n.exportTitle" in transfer, "Markdown export must use the stable export title"
+assert "let raw = n.exportTitle" in transfer, "export filenames must use the stable export title"
+
+# Every literal passed to a current UI/localization call site must be present in
+# both locale tables. This intentionally derives the set from all source files,
+# so removing a key from both locales still fails at its call site.
+all_resource_keys = keys("en", "Localizable.strings") | keys("en", "Localizable.stringsdict")
+ui_literal_patterns = (
+    r'\b(?:Text|Button|Label|TextField)\(\s*"((?:\\.|[^"\\])*)"',
+    r'\.help\(\s*"((?:\\.|[^"\\])*)"',
+    r'String\(localized:\s*"((?:\\.|[^"\\])*)"',
+    r'NSLocalizedString\(\s*"((?:\\.|[^"\\])*)"',
+    r'\.(?:prompt|message)\s*=\s*"((?:\\.|[^"\\])*)"',
+)
+def decode_swift_literal(value):
+    return value.replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\")
+source_literals = {}
+for source_path in sorted((root / "Sources").glob("*.swift")):
+    source_text = source_path.read_text()
+    for pattern in ui_literal_patterns:
+        for match in re.finditer(pattern, source_text, flags=re.DOTALL):
+            raw = match.group(1)
+            if "\\(" in raw:
+                continue
+            key = decode_swift_literal(raw)
+            source_literals.setdefault(key, []).append(str(source_path))
+missing_source_keys = sorted(set(source_literals) - all_resource_keys)
+assert not missing_source_keys, f"UI literals missing from both locale resources: {missing_source_keys}"
+
+info_path = root / "Info.plist"
+with info_path.open("rb") as info_file:
+    info = plistlib.load(info_file)
+assert info.get("CFBundleDevelopmentRegion") == "en", "Info.plist development region must be en"
 
 required_task4 = {
     "Empty note": "空笔记",
@@ -317,3 +351,58 @@ for locale in en zh-Hans; do
     test -f "$APP/Contents/Resources/$locale.lproj/Localizable.strings"
     test -f "$APP/Contents/Resources/$locale.lproj/Localizable.stringsdict"
 done
+
+# Exercise the real Foundation lookup/format path against both bundled locales.
+# The source is temporary; only the compiled verifier runs after the app build.
+RUNTIME_DIR="$(mktemp -d "${TMPDIR:-/tmp}/noty-localization.XXXXXX")"
+trap 'rm -rf "$RUNTIME_DIR"' EXIT
+RUNTIME_SOURCE="$RUNTIME_DIR/verify.swift"
+cat > "$RUNTIME_SOURCE" <<'SWIFT'
+import Foundation
+
+guard CommandLine.arguments.count == 2 else { fatalError("expected app path") }
+let resources = URL(fileURLWithPath: CommandLine.arguments[1])
+    .appendingPathComponent("Contents/Resources", isDirectory: true)
+
+func format(_ bundle: Bundle, _ key: String, _ arguments: [CVarArg]) -> String {
+    let template = bundle.localizedString(forKey: key, value: nil, table: "Localizable")
+    return withVaList(arguments) { NSString(format: template, arguments: $0) as String }
+}
+
+func check(_ locale: String, _ key: String, _ arguments: [CVarArg], _ expected: String) {
+    guard let bundle = Bundle(path: resources.appendingPathComponent("\(locale).lproj").path) else {
+        fatalError("could not load \(locale).lproj")
+    }
+    let actual = format(bundle, key, arguments)
+    guard actual == expected else {
+        fatalError("\(locale)/\(key): expected \(expected.debugDescription), got \(actual.debugDescription)")
+    }
+}
+
+for count in [0, 1, 2] {
+    let enNote = count == 1 ? "1 more note" : "\(count) more notes"
+    let zhNote = "还有 \(count) 篇笔记"
+    let enFiles = count == 1 ? "Choose a folder for 1 MD file." : "Choose a folder for \(count) MD files."
+    let zhFiles = "选择一个文件夹以保存 \(count) 个 MD 文件。"
+    let enAdded = count == 1 ? "Added 1 note." : "Added \(count) notes."
+    let zhAdded = "已添加 \(count) 篇笔记。"
+    let enCount = count == 1 ? "1 note" : "\(count) notes"
+    let zhCount = "\(count) 篇笔记"
+    let enIncomplete = "Wrote 0 of \(count) \(count == 1 ? "note" : "notes"). See Console for details."
+    let zhIncomplete = "已写入 0/\(count) 篇笔记。详情请查看控制台。"
+
+    check("en", "more_notes_count", [count], enNote)
+    check("zh-Hans", "more_notes_count", [count], zhNote)
+    check("en", "export_file_count", [count, "MD"], enFiles)
+    check("zh-Hans", "export_file_count", [count, "MD"], zhFiles)
+    check("en", "export_incomplete_count", [count, 0], enIncomplete)
+    check("zh-Hans", "export_incomplete_count", [count, 0], zhIncomplete)
+    check("en", "import_added_count", [count], enAdded)
+    check("zh-Hans", "import_added_count", [count], zhAdded)
+    check("en", "notes_count", [count], enCount)
+    check("zh-Hans", "notes_count", [count], zhCount)
+}
+print("runtime plural checks passed for en and zh-Hans at counts 0, 1, 2")
+SWIFT
+swiftc "$RUNTIME_SOURCE" -o "$RUNTIME_DIR/verify"
+"$RUNTIME_DIR/verify" "$APP"
