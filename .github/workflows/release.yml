@@ -110,6 +110,7 @@ jobs:
           BUILD_NUMBER: ${{ steps.v.outputs.build }}
         run: |
           ./build.sh release
+          lipo -info build/Noty.app/Contents/MacOS/Noty | grep -Eq 'arm64.*x86_64|x86_64.*arm64'
           codesign --verify --deep --strict build/Noty.app
 
       - name: Package the disk image
@@ -117,6 +118,12 @@ jobs:
         env:
           VERSION: ${{ steps.v.outputs.version }}
         run: ./scripts/make-dmg.sh "$VERSION"
+
+      - name: Verify the disk image
+        if: steps.v.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: hdiutil imageinfo "build/Noty-${VERSION}.dmg" >/dev/null
 
       - name: Sign the update and write the appcast
         if: steps.v.outputs.skip != 'true'
