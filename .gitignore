@@ -5,3 +5,5 @@ build/
 Sparkle/
 sparkle_keys/
 appcast.xml.bak
+
+.worktrees/
