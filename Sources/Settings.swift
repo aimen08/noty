@@ -285,6 +285,20 @@ enum Settings {
         set { d.set(newValue, forKey: "deckAlwaysShown") }
     }
 
+    /// The size the floating note was last resized to. It starts at the deck
+    /// note's size and keeps whatever you stretch it to — a freely placed note
+    /// that snapped back to a preset on every pull would feel broken.
+    static var floatingNoteSize: CGSize {
+        get {
+            let w = d.double(forKey: "floatingNoteW"), h = d.double(forKey: "floatingNoteH")
+            return w >= 280 && h >= 220 ? CGSize(width: w, height: h) : noteSize
+        }
+        set {
+            d.set(newValue.width, forKey: "floatingNoteW")
+            d.set(newValue.height, forKey: "floatingNoteH")
+        }
+    }
+
     /// Show nothing at all at rest — no pill, no dashes. The invisible edge
     /// strip still wakes the deck, so the notes are one hover away; they just
     /// leave the screen entirely alone until asked for.

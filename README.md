@@ -156,7 +156,8 @@ import reads that back. All Notes shows a `done/total` count per note.
   where it will land.
 - **Pull a note anywhere.** Grab the open note by its tab-gutter and drag it
   off the deck — it becomes a floating sticky wherever you drop it, draggable
-  by its header, across displays. Idle a minute and it tucks itself back to
+  by its header, across displays, and resizable from any edge or corner. It
+  remembers the size you stretch it to. Idle a minute and it tucks itself back to
   the edge, exactly like a note on the deck; pin it and it stays. One floats
   at a time — pulling out a second tucks the first.
 - **Hide the deck completely.** Settings → Deck: nothing shows at rest — no

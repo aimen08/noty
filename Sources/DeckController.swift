@@ -431,7 +431,7 @@ final class DeckController: NSObject {
     /// the cursor rather than jumping to it.
     func detachExpandedNote(at pointer: NSPoint) {
         guard let id = model.state.expandedID else { return }
-        let size = Settings.noteSize
+        let size = Settings.floatingNoteSize
         let frame = panel.frame
         let onRight = !Settings.deckOnLeftEdge
         let top = model.openedTop ?? (frame.height - size.height) / 2

@@ -24,10 +24,15 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     func present(id: String, under pointer: NSPoint, grabOffset: NSPoint) {
         if noteID != nil { tuck(animated: false) }
 
-        let size = Settings.noteSize
+        let size = Settings.floatingNoteSize
+        // .resizable on a borderless window is what turns every edge and
+        // corner into a native live-resize band, system cursors included —
+        // no hand-rolled drag handles, and no relayout jank from driving the
+        // frame ourselves.
         let p = FloatingPanel(contentRect: NSRect(origin: .zero, size: size),
-                              styleMask: [.borderless, .nonactivatingPanel],
+                              styleMask: [.borderless, .nonactivatingPanel, .resizable],
                               backing: .buffered, defer: false)
+        p.minSize = NSSize(width: 280, height: 220)
         p.isOpaque = false
         p.backgroundColor = .clear
         p.hasShadow = true
@@ -47,6 +52,16 @@ final class FloatingNote: NSObject, NSWindowDelegate {
         dragTo(pointer)
         p.orderFrontRegardless()
         startIdleWatch()
+    }
+
+    // MARK: Resizing
+
+    /// Live resize counts as activity — a note must never tuck away mid-grab.
+    func windowDidResize(_ notification: Notification) { lastActivity = Date() }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard let panel else { return }
+        Settings.floatingNoteSize = panel.frame.size
     }
 
     /// Where inside the note the user grabbed it, so the paper does not jump
