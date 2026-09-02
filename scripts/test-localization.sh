@@ -230,18 +230,43 @@ assert 'StickyNote' in transfer and 'colorName = n.palette.name' in transfer, \
 assert not re.search(r"note\\\(count == 1 \?", transfer), "transfer code must not hand-build plural suffixes"
 assert "n.exportTitle" in transfer, "Markdown export must use the stable export title"
 assert "let raw = n.exportTitle" in transfer, "export filenames must use the stable export title"
+assert re.search(r"## \\\(n\.exportTitle\)", transfer), \
+    "Markdown export heading must use n.exportTitle exactly"
+safe_name_source = re.search(r"private static func safeName\(_ n: Note\) -> String \{(.*?)\n    \}", transfer, re.DOTALL)
+assert safe_name_source and "let raw = n.exportTitle" in safe_name_source.group(1), \
+    "safeName must use n.exportTitle independently of the Markdown heading"
+normalized_calls = re.sub(r"\s+", " ", deck_views + library + transfer)
+assert re.search(r'NSLocalizedString\("more_notes_count"[^)]*\), count\)+', normalized_calls), \
+    "more_notes_count argument order must remain count"
+assert re.search(r'NSLocalizedString\("export_file_count"[^)]*\), notes\.count, ext\.uppercased\(\)\)', normalized_calls), \
+    "export_file_count argument order must remain notes.count, ext.uppercased()"
+assert re.search(r'NSLocalizedString\("export_incomplete_count"[^)]*\), notes\.count, written\)+', normalized_calls), \
+    "export_incomplete_count argument order must remain notes.count, written"
+assert re.search(r'NSLocalizedString\("import_added_count"[^)]*\), added\)+', normalized_calls), \
+    "import_added_count argument order must remain added"
+assert re.search(r'NSLocalizedString\("notes_count"[^)]*\), filtered\.count\)+', normalized_calls), \
+    "notes_count argument order must remain filtered.count"
 
 # Every literal passed to a current UI/localization call site must be present in
 # both locale tables. This intentionally derives the set from all source files,
 # so removing a key from both locales still fails at its call site.
 all_resource_keys = keys("en", "Localizable.strings") | keys("en", "Localizable.stringsdict")
 ui_literal_patterns = (
-    r'\b(?:Text|Button|Label|TextField)\(\s*"((?:\\.|[^"\\])*)"',
+    r'\b(?:Text|Button|Label|TextField|Toggle|Picker)\(\s*"((?:\\.|[^"\\])*)"',
     r'\.help\(\s*"((?:\\.|[^"\\])*)"',
     r'String\(localized:\s*"((?:\\.|[^"\\])*)"',
     r'NSLocalizedString\(\s*"((?:\\.|[^"\\])*)"',
     r'\.(?:prompt|message)\s*=\s*"((?:\\.|[^"\\])*)"',
 )
+localized_helpers = set()
+for source_path in sorted((root / "Sources").glob("*.swift")):
+    source_text = source_path.read_text()
+    localized_helpers.update(re.findall(
+        r'\bfunc\s+([A-Za-z_]\w*)\s*\([^)]*LocalizedStringKey', source_text, flags=re.DOTALL))
+assert {"pane", "row", "subhead", "shortcutRow", "footerButton"} <= localized_helpers, \
+    "all current LocalizedStringKey helpers must be audited"
+ui_literal_patterns += tuple(
+    rf'\b{re.escape(helper)}\(\s*"((?:\\.|[^"\\])*)"' for helper in sorted(localized_helpers))
 def decode_swift_literal(value):
     return value.replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\")
 source_literals = {}
@@ -253,9 +278,18 @@ for source_path in sorted((root / "Sources").glob("*.swift")):
             if "\\(" in raw:
                 continue
             key = decode_swift_literal(raw)
+            if not key:  # Picker("", ...) and similar intentionally unlabeled controls.
+                continue
             source_literals.setdefault(key, []).append(str(source_path))
-missing_source_keys = sorted(set(source_literals) - all_resource_keys)
+def missing_source_keys_for(resource_keys):
+    return sorted(set(source_literals) - resource_keys)
+missing_source_keys = missing_source_keys_for(all_resource_keys)
 assert not missing_source_keys, f"UI literals missing from both locale resources: {missing_source_keys}"
+assert "Show preview on hover" in source_literals, \
+    "Toggle literals must be included in the source audit"
+fixture_missing = missing_source_keys_for(all_resource_keys - {"Show preview on hover"})
+assert "Show preview on hover" in fixture_missing, \
+    "removing a representative key from both locale inputs must fail the source audit"
 
 info_path = root / "Info.plist"
 with info_path.open("rb") as info_file:
