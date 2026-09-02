@@ -528,7 +528,7 @@ struct NoteTextDirectionLabel: View {
                 Image(systemName: symbol)
                     .font(.system(size: 11, weight: .semibold))
             } else {
-                Text("Auto")
+                Text(L10n.text("direction.auto_short"))
                     .font(.system(size: 9.5, weight: .semibold))
             }
         }
@@ -559,7 +559,7 @@ struct NoteTextDirectionMenu: View {
         // overriding the label's foreground style (most visibly for "Auto").
         .tint(foreground)
         .fixedSize()
-        .help("Text direction: \(direction.title)")
+        .help(L10n.format("help.text_direction", direction.title))
     }
 }
 
@@ -654,7 +654,8 @@ struct NoteEditorView: View {
                 .foregroundStyle(pal.ink.opacity(0.92))
                 .lineLimit(1)
             Spacer(minLength: 6)
-            Text(savedAt.map { "Saved · \(Fmt.ago($0))" } ?? "Not saved")
+            Text(savedAt.map { L10n.format("note.saved", Fmt.ago($0)) }
+                 ?? L10n.text("note.not_saved"))
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.42))
             Button { NoteStore.shared.togglePin(id: note.id) } label: {
@@ -666,7 +667,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(note.pinned ? 0.85 : 0.4))
-            .help(note.pinned ? "Unpin — ⌘P" : "Pin so it stays open  ⌘P")
+            .help(note.pinned ? L10n.text("help.unpin") : L10n.text("help.pin"))
 
             NoteTextDirectionMenu(direction: note.textDirection,
                                   foreground: pal.ink.opacity(0.5)) {
@@ -681,7 +682,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(0.5))
-            .help("Task  ⌘T")
+            .help(L10n.text("help.task"))
             Button { deck.findQuery = deck.findQuery == nil ? "" : nil } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 10.5, weight: .semibold))
@@ -690,7 +691,7 @@ struct NoteEditorView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(pal.ink.opacity(0.5))
-            .help("Find  ⌘F")
+            .help(L10n.text("help.find"))
         }
         .padding(.horizontal, 14)
         .frame(height: 32)
@@ -700,7 +701,7 @@ struct NoteEditorView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 10)).foregroundStyle(pal.ink.opacity(0.45))
-            TextField("Find in note", text: Binding(
+            TextField(L10n.text("note.find_placeholder"), text: Binding(
                 get: { deck.findQuery ?? "" },
                 set: { deck.findQuery = $0; deck.bridge.recount($0) }))
                 .textFieldStyle(.plain)
@@ -739,18 +740,18 @@ struct NoteEditorView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .help(c.name)
+                .help(c.localizedName)
             }
             Spacer(minLength: 8)
-            footerButton("Archive") {
+            footerButton(L10n.text("action.archive")) {
                 NoteStore.shared.setArchived(id: note.id, true)
                 controller.collapse()
             }
-            footerButton("Delete") {
+            footerButton(L10n.text("action.delete")) {
                 NoteStore.shared.delete(id: note.id)
                 controller.collapse()
             }
-            footerButton("Close") { controller.collapse() }
+            footerButton(L10n.text("action.close")) { controller.collapse() }
         }
         .padding(.horizontal, 14)
         .frame(height: 34)

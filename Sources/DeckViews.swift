@@ -632,7 +632,7 @@ struct NotePreviewCard: View {
                         }
                     }
                 } else if note.body.isEmpty || lines.count <= 1 {
-                    Text("Empty note")
+                    Text(L10n.text("note.empty"))
                         .font(.system(size: 10).italic())
                         .foregroundStyle(note.palette.ink.opacity(0.45))
                 }
@@ -676,7 +676,7 @@ struct MoreTab: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(TabPressStyle())
-        .help("\(count) more note\(count == 1 ? "" : "s")")
+        .help(L10n.plural("notes.more", count))
     }
 }
 
@@ -690,7 +690,7 @@ struct EmptyTab: View {
         Button(action: action) {
             ZStack(alignment: .top) {
                 edgeTabShape(onRight: onRight).fill(.ultraThinMaterial)
-                Text("NEW NOTE")
+                Text(L10n.text("note.new_tab").uppercased())
                     .font(Ink.tabFont)
                     .tracking(Ink.tabTracking)
                     .foregroundStyle(.secondary)
@@ -724,7 +724,7 @@ struct PlusButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.15), value: hovering)
-        .help("New Note  ⌥⌘N")
+        .help(L10n.text("help.new_note"))
     }
 }
 
@@ -748,7 +748,7 @@ struct CogButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.15), value: hovering)
-        .help("Settings  ⌘,")
+        .help(L10n.text("help.settings"))
     }
 }
 
@@ -757,11 +757,11 @@ struct CogButton: View {
 extension View {
     func noteContextMenu(_ note: Note) -> some View {
         contextMenu {
-            Button(note.pinned ? "Unpin" : "Pin") { NoteStore.shared.togglePin(id: note.id) }
-            Button("Archive") { NoteStore.shared.setArchived(id: note.id, true) }
-            Button("Cycle colour  ⌘.") { NoteStore.shared.cycleColor(id: note.id) }
+            Button(note.pinned ? L10n.text("action.unpin") : L10n.text("action.pin")) { NoteStore.shared.togglePin(id: note.id) }
+            Button(L10n.text("action.archive")) { NoteStore.shared.setArchived(id: note.id, true) }
+            Button(L10n.text("help.cycle_colour")) { NoteStore.shared.cycleColor(id: note.id) }
             Divider()
-            Button("Delete") { NoteStore.shared.delete(id: note.id) }
+            Button(L10n.text("action.delete")) { NoteStore.shared.delete(id: note.id) }
         }
     }
 }

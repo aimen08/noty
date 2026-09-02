@@ -49,9 +49,8 @@ final class Updater {
     func checkForUpdates() {
         NSApp.activate()
         let a = NSAlert()
-        a.messageText = "Updates are not available in this build"
-        a.informativeText = "This copy of Noty was built without the Sparkle framework. "
-            + "Run ./scripts/fetch-sparkle.sh and rebuild to enable automatic updates."
+        a.messageText = L10n.text("updates.unavailable_title")
+        a.informativeText = L10n.text("updates.unavailable_body")
         a.runModal()
     }
 

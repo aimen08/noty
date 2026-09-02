@@ -4,6 +4,12 @@
 <dict>
 	<key>CFBundleName</key>            <string>Noty</string>
 	<key>CFBundleDisplayName</key>     <string>Noty</string>
+	<key>CFBundleDevelopmentRegion</key><string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+	</array>
 	<key>CFBundleIdentifier</key>      <string>app.noty.Noty</string>
 	<key>CFBundleExecutable</key>      <string>Noty</string>
 	<key>CFBundleIconFile</key>        <string>AppIcon</string>

@@ -10,8 +10,8 @@ enum DeckStyle: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .tabs: return "Labelled tabs"
-        case .compact: return "Colour chips"
+        case .tabs: return L10n.text("deck_style.labelled_tabs")
+        case .compact: return L10n.text("deck_style.colour_chips")
         }
     }
 }

@@ -46,7 +46,7 @@ enum Transfer {
 
     static func export(_ format: Format, notes: [Note]) {
         guard !notes.isEmpty else {
-            alert("Nothing to export", "There are no notes yet.")
+            alert(L10n.text("export.empty_title"), L10n.text("export.empty_body"))
             return
         }
         NSApp.activate()
@@ -64,8 +64,8 @@ enum Transfer {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Export Here"
-        panel.message = "Choose a folder for \(notes.count) \(ext.uppercased()) file\(notes.count == 1 ? "" : "s")."
+        panel.prompt = L10n.text("export.here")
+        panel.message = L10n.plural("export.choose_folder", notes.count, ext.uppercased())
         guard panel.runModal() == .OK, let dir = panel.url else { return }
 
         var used = Set<String>()
@@ -87,34 +87,43 @@ enum Transfer {
         }
         reveal(dir)
         if written < notes.count {
-            alert("Export incomplete", "Wrote \(written) of \(notes.count) notes. See Console for details.")
+            alert(L10n.text("export.incomplete_title"),
+                  L10n.format("export.incomplete_body", written,
+                              L10n.plural("notes.count", notes.count)))
         }
     }
 
     private static func exportSingle(_ notes: [Note]) {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Noty-\(Fmt.fileStamp.string(from: Date())).md"
+        panel.nameFieldStringValue = L10n.format(
+            "export.markdown_filename", Fmt.fileStamp.string(from: Date()))
         panel.allowedContentTypes = [.plainText]
         panel.allowsOtherFileTypes = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
         let doc = notes.map { n -> String in
-            """
+            let archiveSuffix = n.archived ? L10n.text("export.metadata_archived_suffix") : ""
+            let metadata = L10n.format(
+                "export.metadata", n.palette.localizedName,
+                Fmt.stamp.string(from: n.created), Fmt.stamp.string(from: n.modified),
+                archiveSuffix)
+            return """
             ## \(n.displayTitle)
-            <!-- \(n.palette.name) · created \(Fmt.stamp.string(from: n.created)) · \
-            modified \(Fmt.stamp.string(from: n.modified))\(n.archived ? " · archived" : "") -->
+            <!-- \(metadata) -->
 
             \(Tasks.toMarkdown(n.body))
             """
         }.joined(separator: "\n\n---\n\n")
 
-        let header = "# Noty export\n\n\(notes.count) notes · \(Fmt.stamp.string(from: Date()))\n\n---\n\n"
+        let header = "# \(L10n.text("export.document_title"))\n\n"
+            + "\(L10n.plural("notes.count", notes.count)) · \(Fmt.stamp.string(from: Date()))\n\n---\n\n"
         write(header + doc, to: url)
     }
 
     private static func exportArchive(_ notes: [Note]) {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Noty-\(Fmt.fileStamp.string(from: Date())).stickies"
+        panel.nameFieldStringValue = L10n.format(
+            "export.archive_filename", Fmt.fileStamp.string(from: Date()))
         panel.allowsOtherFileTypes = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
@@ -126,7 +135,7 @@ enum Transfer {
             try enc.encode(archive).write(to: url, options: .atomic)
             reveal(url)
         } catch {
-            alert("Export failed", error.localizedDescription)
+            alert(L10n.text("export.failed_title"), error.localizedDescription)
         }
     }
 
@@ -153,7 +162,7 @@ enum Transfer {
         if let sticky = UTType(filenameExtension: "stickies") { types.append(sticky) }
         panel.allowedContentTypes = types
         panel.allowsOtherFileTypes = true
-        panel.message = "Choose a .stickies archive, or Markdown / text files."
+        panel.message = L10n.text("import.choose_files")
         guard panel.runModal() == .OK else { return }
 
         var incoming: [Note] = []
@@ -184,10 +193,11 @@ enum Transfer {
 
         let added = NoteStore.shared.ingest(incoming)
         if failed.isEmpty {
-            alert("Import complete", "Added \(added) note\(added == 1 ? "" : "s").")
+            alert(L10n.text("import.complete_title"), L10n.plural("import.added", added))
         } else {
-            alert("Import finished with problems",
-                  "Added \(added) note\(added == 1 ? "" : "s"). Could not read: \(failed.joined(separator: ", "))")
+            alert(L10n.text("import.problems_title"),
+                  L10n.format("import.problems_body", L10n.plural("import.added", added),
+                              failed.joined(separator: ", ")))
         }
     }
 
@@ -199,7 +209,9 @@ enum Transfer {
             .joined(separator: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmed = String(cleaned.prefix(80))
-        return trimmed.isEmpty ? "note-\(n.id.prefix(8))" : trimmed
+        return trimmed.isEmpty
+            ? L10n.format("export.default_note_name", String(n.id.prefix(8)))
+            : trimmed
     }
 
     private static func write(_ s: String, to url: URL) {
@@ -207,7 +219,7 @@ enum Transfer {
             try s.write(to: url, atomically: true, encoding: .utf8)
             reveal(url)
         } catch {
-            alert("Export failed", error.localizedDescription)
+            alert(L10n.text("export.failed_title"), error.localizedDescription)
         }
     }
 

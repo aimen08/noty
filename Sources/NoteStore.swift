@@ -159,18 +159,6 @@ final class NoteStore: ObservableObject {
     }
 
     private func seedWelcomeNote() {
-        create(body: """
-        Welcome to Noty
-
-        Your notes live at the edge of the screen. Slide the pointer to the \
-        right edge and the deck fans out.
-
-        ⌥⌘N  new note
-        ⌥⌘A  all notes
-        ⌥⌘L  archive
-
-        Inside a note: Esc closes, ⌘F finds, ⌘. cycles the colour, \
-        ⌘⌫ deletes with ten seconds to undo.
-        """, color: 0)
+        create(body: L10n.text("welcome.note_body"), color: 0)
     }
 }
