@@ -282,15 +282,18 @@ struct LibraryDetail: View {
                     }
                 }
 
-                TextField(
-                    "",
-                    text: $title,
-                    prompt: Text(note.hasCustomTitle ? L10n.text("note.title_prompt") : (Note.derivedTitle(from: text).isEmpty ? L10n.text("note.untitled") : Note.derivedTitle(from: text)))
-                        .foregroundStyle(.secondary)
-                )
-                .textFieldStyle(.plain)
+                ZStack(alignment: .leading) {
+                    if title.isEmpty {
+                        Text(note.hasCustomTitle ? L10n.text("note.title_prompt") : (Note.derivedTitle(from: text).isEmpty ? L10n.text("note.untitled") : Note.derivedTitle(from: text)))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .allowsHitTesting(false)
+                    }
+                    TextField("", text: $title)
+                        .textFieldStyle(.plain)
+                        .lineLimit(1)
+                }
                 .font(.system(size: 13, weight: .semibold))
-                .lineLimit(1)
                 .contextMenu {
                     if note.hasCustomTitle {
                         Button(L10n.text("note.title_reset")) {

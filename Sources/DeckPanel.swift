@@ -199,7 +199,12 @@ final class DeckPanel: NSPanel {
     /// `.statusBar` is required to draw over full-screen apps; `.floating` alone is not.
     func applyLevel() {
         level = Settings.showOverFullScreen ? .statusBar : .floating
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        // .fullScreenAuxiliary is what lets the panel join a full-screen space
+        // at all — granting it unconditionally showed the deck over full-screen
+        // apps with the setting off, just at a lower level (issue #27).
+        var behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        if Settings.showOverFullScreen { behavior.insert(.fullScreenAuxiliary) }
+        collectionBehavior = behavior
     }
 }
 

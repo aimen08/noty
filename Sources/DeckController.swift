@@ -196,6 +196,17 @@ final class DeckController: NSObject {
             if new == .fan {
                 model.state = new
                 model.revealTick &+= 1
+            } else if old == .rest, !hotZone.contains(NSEvent.mouseLocation) {
+                // A hotkey opened this note — the pointer is nowhere near the
+                // deck and nobody is watching the edge choreography. The staged
+                // passes below assume an on-screen, settled panel; fired into a
+                // fresh resize on another space they stall mid-flight and leave
+                // the note stuck invisible at its transition's start, with its
+                // tab poking through the screen edge (issue #27). Show the note
+                // outright instead.
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { model.state = new }
             } else {
                 // The panel has to be its final size *and rendered* before the note
                 // animates in. `main.async` is not enough — SwiftUI coalesces the

@@ -677,17 +677,25 @@ struct NoteEditorView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            TextField(
-                "",
-                text: $title,
-                prompt: Text(note.hasCustomTitle ? L10n.text("note.title_prompt") : (Note.derivedTitle(from: text).isEmpty ? L10n.text("note.untitled") : Note.derivedTitle(from: text)))
-                    .foregroundStyle(pal.ink.opacity(0.42))
-            )
-            .textFieldStyle(.plain)
+            // No `prompt:` — a plain-style field draws its placeholder in the
+            // system secondary label colour and ignores every modifier put on
+            // it, which reads as white on the paper in dark mode. A derived
+            // title always shows *as* the placeholder, so it has to be our own
+            // Text, which styles like anything else.
+            ZStack(alignment: .leading) {
+                if title.isEmpty {
+                    Text(note.hasCustomTitle ? L10n.text("note.title_prompt") : (Note.derivedTitle(from: text).isEmpty ? L10n.text("note.untitled") : Note.derivedTitle(from: text)))
+                        .foregroundStyle(pal.ink.opacity(titleFocused ? 0.35 : 0.92))
+                        .lineLimit(1)
+                        .allowsHitTesting(false)
+                }
+                TextField("", text: $title)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(pal.ink.opacity(0.92))
+                    .focused($titleFocused)
+            }
             .font(.system(size: 12.5, weight: .semibold))
-            .foregroundStyle(pal.ink.opacity(0.92))
-            .lineLimit(1)
-            .focused($titleFocused)
+            .tint(pal.ink)
             .onSubmit {
                 flushTitle()
                 deck.bridge.focusText()
