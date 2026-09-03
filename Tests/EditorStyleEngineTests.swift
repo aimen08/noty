@@ -24,6 +24,7 @@ struct EditorStyleEngineTests {
         testLegacyArchiveDefaultsToAutomaticDirection()
         testTextDirectionDatabaseMigration()
         LocalizationTests.run { check($0, $1) }
+        testCustomNoteTitleBehavior()
 
         guard failures == 0 else {
             fputs("EditorStyleEngineTests: \(failures) failure(s)\n", stderr)
@@ -530,6 +531,24 @@ struct EditorStyleEngineTests {
               "single-character work in a long note must stay paragraph-local")
         check(processed * 1_000 < text.length,
               "long-note planning must not approach full-document work")
+    }
+
+    private static func testCustomNoteTitleBehavior() {
+        var note = Note()
+        check(note.displayTitle == "New note", "empty note without custom title must display 'New note'")
+        check(!note.hasCustomTitle, "default note should not have custom title")
+
+        note.body = "First line of body\nSecond line"
+        check(note.displayTitle == "First line of body", "note without custom title should derive title from first line")
+
+        note.title = "Explicit Custom Title"
+        check(note.hasCustomTitle, "note with non-empty title should have custom title")
+        check(note.displayTitle == "Explicit Custom Title", "custom title must override derived title")
+
+        // Clearing custom title restores derived title
+        note.title = ""
+        check(!note.hasCustomTitle, "cleared title should not be marked as custom")
+        check(note.displayTitle == "First line of body", "clearing title must restore auto-derived title")
     }
 
     private static func makeTextView(_ source: String) -> NSTextView {

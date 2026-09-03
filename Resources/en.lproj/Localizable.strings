@@ -126,6 +126,8 @@
 "note.new_tab" = "New note";
 "note.not_saved" = "Not saved";
 "note.saved" = "Saved · %@";
+"note.title_prompt" = "Title";
+"note.title_reset" = "Reset to Auto Title";
 "note.untitled" = "New note";
 "notes.count" = "%ld notes";
 "notes.more" = "%ld more notes";

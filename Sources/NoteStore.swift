@@ -20,6 +20,7 @@ final class NoteStore: ObservableObject {
 
     private init() {
         notes = store.load()
+        migrateDerivedTitles()
         if notes.isEmpty { seedWelcomeNote() }
     }
 
@@ -30,25 +31,47 @@ final class NoteStore: ObservableObject {
 
     func note(id: String) -> Note? { notes.first { $0.id == id } }
 
+    /// Before titles became independent, every body edit wrote the derived
+    /// title into the row, so existing databases hold a stored copy of it in
+    /// every note. Under the new rule a non-empty title is a custom one — which
+    /// would freeze every pre-existing note's tab at whatever its first line
+    /// said on upgrade day. A stored title that still equals the derivation is
+    /// not a choice anyone made; clear it once so those notes keep renaming
+    /// themselves.
+    private func migrateDerivedTitles() {
+        for i in notes.indices where !notes[i].title.isEmpty
+            && notes[i].title == Note.derivedTitle(from: notes[i].body) {
+            notes[i].title = ""
+            store.upsert(notes[i])
+        }
+    }
+
     // MARK: Mutations
 
     @discardableResult
-    func create(body: String = "", color: Int? = nil) -> Note {
+    func create(body: String = "", title: String = "", color: Int? = nil) -> Note {
         var n = Note()
         n.order = (active.map(\.order).min() ?? 0) - 1   // newest sits at the top of the deck
         n.color = color ?? (notes.count % NoteColor.all.count)
         n.body = body
-        n.title = Note.derivedTitle(from: body)
+        n.title = title
         notes.append(n)
         store.upsert(n)
         return n
+    }
+
+    func updateTitle(id: String, title: String) {
+        guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard notes[i].title != title else { return }
+        notes[i].title = title
+        notes[i].modified = Date()
+        store.upsert(notes[i])
     }
 
     func updateBody(id: String, body: String) {
         guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
         guard notes[i].body != body else { return }
         notes[i].body = body
-        notes[i].title = Note.derivedTitle(from: body)
         notes[i].modified = Date()
         store.upsert(notes[i])
     }

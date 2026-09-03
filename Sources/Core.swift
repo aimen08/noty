@@ -275,6 +275,10 @@ struct Note: Identifiable, Hashable {
 
     var palette: NoteColor { NoteColor.at(color) }
 
+    var hasCustomTitle: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     /// Title shown in the fan / lists, derived from the first non-empty line.
     static func derivedTitle(from body: String) -> String {
         let line = body.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
@@ -285,7 +289,12 @@ struct Note: Identifiable, Hashable {
         return clean.count > 60 ? String(clean.prefix(60)) + "…" : clean
     }
 
-    var displayTitle: String { title.isEmpty ? L10n.text("note.untitled") : title }
+    var displayTitle: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        let derived = Self.derivedTitle(from: body)
+        return derived.isEmpty ? L10n.text("note.untitled") : derived
+    }
 
     /// Completed / total, or nil when the note holds no tasks.
     var taskProgress: (done: Int, total: Int)? {
