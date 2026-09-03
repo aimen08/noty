@@ -309,10 +309,15 @@ struct Note: Identifiable, Hashable {
         return total > 0 ? (done, total) : nil
     }
 
-    /// Second line onwards, collapsed — used as list subtitle.
+    /// Collapsed snippet used as list subtitle.
+    /// If the note has an independent custom title, the first line of the body is
+    /// part of the content and included in the preview; otherwise the first line
+    /// is skipped because it already serves as the title.
     var preview: String {
         let lines = body.split(whereSeparator: \.isNewline).map(String.init)
-        let rest = lines.dropFirst().joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        let rest = (hasCustomTitle ? lines : Array(lines.dropFirst()))
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
         return rest.count > 120 ? String(rest.prefix(120)) + "…" : rest
     }
 }
