@@ -11,7 +11,13 @@ on:
   push:
     branches: [main]
     paths-ignore:
+      # Workflow and CI edits are release *plumbing*, not releasable change —
+      # the 1.5.1 accident was a workflow tweak patch-bumping itself out the
+      # door. The changed release.yml still takes effect on the next real
+      # release, since a push-triggered run uses the file from the pushed merge.
+      - '.github/**'
       - 'appcast.xml'
+      - 'appcast-intel.xml'
       - 'site/**'
       - 'media/**'
       - 'screenshots/**'
