@@ -604,7 +604,7 @@ struct NotePreviewCard: View {
                 }
 
                 let lines = note.body.split(whereSeparator: \.isNewline).map(String.init)
-                let previewLines = Array(lines.dropFirst().prefix(4))
+                let previewLines = Array((note.hasCustomTitle ? lines : Array(lines.dropFirst())).prefix(4))
                 if !previewLines.isEmpty {
                     VStack(alignment: .leading, spacing: 3) {
                         ForEach(Array(previewLines.enumerated()), id: \.offset) { _, line in
@@ -631,7 +631,7 @@ struct NotePreviewCard: View {
                             }
                         }
                     }
-                } else if note.body.isEmpty || lines.count <= 1 {
+                } else {
                     Text(L10n.text("note.empty"))
                         .font(.system(size: 10).italic())
                         .foregroundStyle(note.palette.ink.opacity(0.45))

@@ -540,15 +540,23 @@ struct EditorStyleEngineTests {
 
         note.body = "First line of body\nSecond line"
         check(note.displayTitle == "First line of body", "note without custom title should derive title from first line")
+        check(note.preview == "Second line", "note without custom title should skip first line in preview")
 
         note.title = "Explicit Custom Title"
         check(note.hasCustomTitle, "note with non-empty title should have custom title")
         check(note.displayTitle == "Explicit Custom Title", "custom title must override derived title")
+        check(note.preview == "First line of body Second line", "note with custom title must include first line in preview")
+
+        // Single-line note with custom title
+        let singleLineNote = Note(title: "Custom Title", body: "Only one line of body")
+        check(singleLineNote.hasCustomTitle, "single-line note should have custom title")
+        check(singleLineNote.preview == "Only one line of body", "single-line note with custom title must show body in preview")
 
         // Clearing custom title restores derived title
         note.title = ""
         check(!note.hasCustomTitle, "cleared title should not be marked as custom")
         check(note.displayTitle == "First line of body", "clearing title must restore auto-derived title")
+        check(note.preview == "Second line", "clearing title must restore preview skipping first line")
     }
 
     private static func makeTextView(_ source: String) -> NSTextView {
