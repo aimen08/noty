@@ -26,7 +26,7 @@ final class QuickCapture: NSObject, NSWindowDelegate {
             panel?.makeKeyAndOrderFront(nil)
             return
         }
-        let p = CapturePanel(contentRect: NSRect(x: 0, y: 0, width: 460, height: 178),
+        let p = CapturePanel(contentRect: NSRect(x: 0, y: 0, width: 460, height: 150),
                              styleMask: [.borderless, .nonactivatingPanel],
                              backing: .buffered, defer: false)
         p.isOpaque = false
@@ -120,10 +120,20 @@ private struct CaptureView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 7) {
                 Circle().fill(pal.dash).frame(width: 8, height: 8)
-                Text(L10n.text("capture.title"))
+                // The label names the destination: the chosen note, or a fresh
+                // quick note. One glance answers "where will this land".
+                Text(targetID.flatMap { NoteStore.shared.note(id: $0)?.displayTitle }
+                     ?? L10n.text("capture.title"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(pal.ink.opacity(0.55))
-                Spacer()
+                    .lineLimit(1)
+                Spacer(minLength: 10)
+                // Destinations as colour dots — the deck's own vocabulary. The
+                // ring marks the choice; hovering names it.
+                HStack(spacing: 6) {
+                    dot(nil)
+                    ForEach(targets) { note in dot(note.id) }
+                }
             }
 
             TextEditor(text: $text)
@@ -148,21 +158,12 @@ private struct CaptureView: View {
                     return .handled
                 }
 
-            HStack(spacing: 6) {
-                chip(nil, label: L10n.text("note.untitled"),
-                     dot: NoteColor.at(NoteStore.shared.notes.count % NoteColor.all.count).dash)
-                ForEach(targets) { note in
-                    chip(note.id, label: note.displayTitle, dot: note.palette.dash)
-                }
-                Spacer(minLength: 0)
-            }
-
             Text(L10n.text("capture.hint"))
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.4))
         }
         .padding(14)
-        .frame(width: 460, height: 178)
+        .frame(width: 460, height: 150)
         .animation(.easeInOut(duration: 0.15), value: targetID)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -176,25 +177,33 @@ private struct CaptureView: View {
         .onAppear { focused = true }
     }
 
-    private func chip(_ id: String?, label: String, dot: Color) -> some View {
+    private func dot(_ id: String?) -> some View {
         let selected = targetID == id
+        let colour = id.flatMap { NoteStore.shared.note(id: $0)?.palette.dash }
         return Button {
             targetID = id
         } label: {
-            HStack(spacing: 4) {
-                Circle().fill(dot).frame(width: 6, height: 6)
-                Text(label).font(.system(size: 10, weight: selected ? .semibold : .regular))
-                    .lineLimit(1)
+            ZStack {
+                if let colour {
+                    Circle().fill(colour)
+                } else {
+                    // A fresh note: an empty ring with a plus, not yet any colour.
+                    Circle().strokeBorder(pal.ink.opacity(0.45), lineWidth: 1.2)
+                    Image(systemName: "plus")
+                        .font(.system(size: 5.5, weight: .bold))
+                        .foregroundStyle(pal.ink.opacity(0.6))
+                }
             }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(pal.ink.opacity(selected ? 0.16 : 0.06)))
-            .overlay(Capsule().strokeBorder(pal.ink.opacity(selected ? 0.35 : 0), lineWidth: 1))
-            .foregroundStyle(pal.ink.opacity(selected ? 0.95 : 0.65))
-            .contentShape(Capsule())
+            .frame(width: 10, height: 10)
+            .overlay(
+                Circle().strokeBorder(pal.ink.opacity(selected ? 0.75 : 0), lineWidth: 1.3)
+                    .padding(-3)
+            )
+            .scaleEffect(selected ? 1.15 : 1)
+            .contentShape(Circle().inset(by: -4))
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: 130)
+        .help(id.flatMap { NoteStore.shared.note(id: $0)?.displayTitle } ?? L10n.text("note.untitled"))
     }
 }
 
