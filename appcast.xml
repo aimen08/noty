@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.6.0</title>
-      <pubDate>Thu, 03 Sep 2026 13:18:12 +0000</pubDate>
-      <sparkle:version>111</sparkle:version>
-      <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
+      <title>1.6.1</title>
+      <pubDate>Thu, 03 Sep 2026 15:39:39 +0000</pubDate>
+      <sparkle:version>115</sparkle:version>
+      <sparkle:shortVersionString>1.6.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.6.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/29">#29</a> feat: support independent custom note titles &mdash; @yifjfgup</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/26">#26</a> 产品需求：快速记录 &mdash; requested by @wangsSev</li><li><a href="https://github.com/aimen08/noty/issues/27">#27</a> [Bug]: An animation error occurred when creating a new sticky note using the shortcut key &mdash; requested by @twdlight</li><li><a href="https://github.com/aimen08/noty/issues/28">#28</a> Feature Request: Support independent/custom note titles &mdash; requested by @yifjfgup</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.6.0/Noty.dmg" type="application/octet-stream" sparkle:edSignature="KHOxFuFEnwh9xdZqBAkrOiw0y4qGn5ufEMK3GgL8xbn/0j9/U0xg+/c/M7cYMSDtG1sgGvaLwaAuCt9cErWICA==" length="1968070" />
+      <description><![CDATA[<p>Noty 1.6.1</p><ul><li><a href="https://github.com/aimen08/noty/pull/31">#31</a> fix: include first body line in preview when custom title is set &mdash; @yifjfgup</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/30">#30</a> Hover preview card displays &quot;Empty note&quot; for notes with custom titles and   single-line bodies &mdash; requested by @yifjfgup</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.6.1/Noty.dmg" type="application/octet-stream" sparkle:edSignature="SxJ/LCYDLImo6tMvpZILE4xDG8XipcOs1dt2CdQufwka9prKQVJNJLeUxejuTCXLDGpI71/zRhglU/NAmshDAw==" length="1967841" />
     </item>
   </channel>
 </rss>
