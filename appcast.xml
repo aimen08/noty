@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.5.1</title>
-      <pubDate>Wed, 02 Sep 2026 18:56:39 +0000</pubDate>
-      <sparkle:version>102</sparkle:version>
-      <sparkle:shortVersionString>1.5.1</sparkle:shortVersionString>
+      <title>1.6.0</title>
+      <pubDate>Thu, 03 Sep 2026 13:18:12 +0000</pubDate>
+      <sparkle:version>111</sparkle:version>
+      <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.5.1</p><ul><li>Ship two release assets, not four</li><li>Point the 1.5.0 feeds at the stable asset names</li><li>Release 1.5.0: update appcast</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.5.1/Noty.dmg" type="application/octet-stream" sparkle:edSignature="WWOXbiVCoiKCbt3WUqPzrzjFYh4DlYkMxSL8TnqxTlgko34pmFM1twI798BY1+eDsQ9TBc1OAYTPhiYOGWdFAQ==" length="1943922" />
+      <description><![CDATA[<p>Noty 1.6.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/29">#29</a> feat: support independent custom note titles &mdash; @yifjfgup</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/26">#26</a> 产品需求：快速记录 &mdash; requested by @wangsSev</li><li><a href="https://github.com/aimen08/noty/issues/27">#27</a> [Bug]: An animation error occurred when creating a new sticky note using the shortcut key &mdash; requested by @twdlight</li><li><a href="https://github.com/aimen08/noty/issues/28">#28</a> Feature Request: Support independent/custom note titles &mdash; requested by @yifjfgup</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.6.0/Noty.dmg" type="application/octet-stream" sparkle:edSignature="KHOxFuFEnwh9xdZqBAkrOiw0y4qGn5ufEMK3GgL8xbn/0j9/U0xg+/c/M7cYMSDtG1sgGvaLwaAuCt9cErWICA==" length="1968070" />
     </item>
   </channel>
 </rss>
