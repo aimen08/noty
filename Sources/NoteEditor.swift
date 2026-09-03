@@ -570,10 +570,13 @@ struct NoteEditorView: View {
     var onRight: Bool = true
 
     @State private var text = ""
+    @State private var title = ""
     @State private var saveWork: DispatchWorkItem?
+    @State private var titleSaveWork: DispatchWorkItem?
     @State private var savedAt: Date?
     @State private var detaching = false
     @FocusState private var findFocused: Bool
+    @FocusState private var titleFocused: Bool
 
     private var pal: NoteColor { note.palette }
 
@@ -593,9 +596,11 @@ struct NoteEditorView: View {
         .overlay(noteShape.strokeBorder(Color.black.opacity(0.07), lineWidth: 0.5))
         .onAppear {
             text = note.body
+            title = note.title
             savedAt = note.modified
         }
         .onChange(of: text) { _, v in scheduleSave(v) }
+        .onChange(of: title) { _, v in scheduleTitleSave(v) }
         .onChange(of: deck.findQuery) { _, q in
             if q != nil { findFocused = true } else { deck.bridge.focusText() }
         }
@@ -672,10 +677,30 @@ struct NoteEditorView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text(note.displayTitle)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(pal.ink.opacity(0.92))
-                .lineLimit(1)
+            TextField(
+                "",
+                text: $title,
+                prompt: Text(note.hasCustomTitle ? "Title" : (Note.derivedTitle(from: text).isEmpty ? "New note" : Note.derivedTitle(from: text)))
+                    .foregroundStyle(pal.ink.opacity(0.42))
+            )
+            .textFieldStyle(.plain)
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(pal.ink.opacity(0.92))
+            .lineLimit(1)
+            .focused($titleFocused)
+            .onSubmit {
+                flushTitle()
+                deck.bridge.focusText()
+            }
+            .contextMenu {
+                if note.hasCustomTitle {
+                    Button("Reset to Auto Title") {
+                        title = ""
+                        NoteStore.shared.updateTitle(id: note.id, title: "")
+                    }
+                }
+            }
+
             Spacer(minLength: 6)
             Text(savedAt.map { L10n.format("note.saved", Fmt.ago($0)) }
                  ?? L10n.text("note.not_saved"))
@@ -808,8 +833,25 @@ struct NoteEditorView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
     }
 
+    private func scheduleTitleSave(_ value: String) {
+        titleSaveWork?.cancel()
+        let work = DispatchWorkItem {
+            NoteStore.shared.updateTitle(id: note.id, title: value)
+            savedAt = Date()
+        }
+        titleSaveWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+    }
+
+    private func flushTitle() {
+        titleSaveWork?.cancel()
+        NoteStore.shared.updateTitle(id: note.id, title: title)
+    }
+
     private func flush() {
         saveWork?.cancel()
+        titleSaveWork?.cancel()
         NoteStore.shared.updateBody(id: note.id, body: text)
+        NoteStore.shared.updateTitle(id: note.id, title: title)
     }
 }

@@ -33,22 +33,29 @@ final class NoteStore: ObservableObject {
     // MARK: Mutations
 
     @discardableResult
-    func create(body: String = "", color: Int? = nil) -> Note {
+    func create(body: String = "", title: String = "", color: Int? = nil) -> Note {
         var n = Note()
         n.order = (active.map(\.order).min() ?? 0) - 1   // newest sits at the top of the deck
         n.color = color ?? (notes.count % NoteColor.all.count)
         n.body = body
-        n.title = Note.derivedTitle(from: body)
+        n.title = title
         notes.append(n)
         store.upsert(n)
         return n
+    }
+
+    func updateTitle(id: String, title: String) {
+        guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard notes[i].title != title else { return }
+        notes[i].title = title
+        notes[i].modified = Date()
+        store.upsert(notes[i])
     }
 
     func updateBody(id: String, body: String) {
         guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
         guard notes[i].body != body else { return }
         notes[i].body = body
-        notes[i].title = Note.derivedTitle(from: body)
         notes[i].modified = Date()
         store.upsert(notes[i])
     }

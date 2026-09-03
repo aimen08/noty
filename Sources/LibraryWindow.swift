@@ -75,7 +75,7 @@ struct LibraryView: View {
         let q = model.query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return source }
         return source.filter {
-            $0.title.lowercased().contains(q) || $0.body.lowercased().contains(q)
+            $0.displayTitle.lowercased().contains(q) || $0.body.lowercased().contains(q)
         }
     }
 
@@ -259,7 +259,9 @@ struct LibraryDetail: View {
     let bridge: EditorBridge
 
     @State private var text = ""
+    @State private var title = ""
     @State private var saveWork: DispatchWorkItem?
+    @State private var titleSaveWork: DispatchWorkItem?
 
     private var pal: NoteColor { note.palette }
 
@@ -280,8 +282,24 @@ struct LibraryDetail: View {
                     }
                 }
 
-                Text(note.displayTitle)
-                    .font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                TextField(
+                    "",
+                    text: $title,
+                    prompt: Text(note.hasCustomTitle ? "Title" : (Note.derivedTitle(from: text).isEmpty ? "New note" : Note.derivedTitle(from: text)))
+                        .foregroundStyle(.secondary)
+                )
+                .textFieldStyle(.plain)
+                .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+                .contextMenu {
+                    if note.hasCustomTitle {
+                        Button("Reset to Auto Title") {
+                            title = ""
+                            NoteStore.shared.updateTitle(id: note.id, title: "")
+                        }
+                    }
+                }
+
                 Spacer()
                 Text(L10n.format("note.edited", Fmt.ago(note.modified)))
                     .font(.system(size: 10.5)).foregroundStyle(.secondary)
@@ -317,16 +335,31 @@ struct LibraryDetail: View {
                          styleToken: "\(note.color)|\(Settings.noteFontSize)|\(Settings.noteFontName)|\(Settings.markdownStyling)")
                 .background(pal.paper)
         }
-        .onAppear { text = note.body }
+        .onAppear {
+            text = note.body
+            title = note.title
+        }
+        .onChange(of: note.id) { _, _ in
+            text = note.body
+            title = note.title
+        }
         .onChange(of: text) { _, v in
             saveWork?.cancel()
             let w = DispatchWorkItem { NoteStore.shared.updateBody(id: note.id, body: v) }
             saveWork = w
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: w)
         }
+        .onChange(of: title) { _, v in
+            titleSaveWork?.cancel()
+            let w = DispatchWorkItem { NoteStore.shared.updateTitle(id: note.id, title: v) }
+            titleSaveWork = w
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: w)
+        }
         .onDisappear {
             saveWork?.cancel()
+            titleSaveWork?.cancel()
             NoteStore.shared.updateBody(id: note.id, body: text)
+            NoteStore.shared.updateTitle(id: note.id, title: title)
         }
     }
 }
