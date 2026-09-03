@@ -118,7 +118,10 @@ import reads that back. All Notes shows a `done/total` count per note.
   in All Notes → Archive, restorable at any time.
 - **Quick capture** (`⇧⌘Space`) — a small floating box from anywhere: type,
   hit `↩`, and it becomes a note in the deck without opening the editor.
-  `⇧↩` for a new line, `esc` to cancel, click away to dismiss.
+  `⇧↩` for a new line, `esc` to cancel, click away to dismiss. A row of
+  chips picks the destination — a fresh note, or appended to the end of an
+  existing one (`⌘1` for new, `⌘2`… for the tabs); the box's paper colour
+  previews where the text will land.
 - **All Notes** (`⌥⌘A`) — one window, search across every note body and title,
   with an editable detail pane.
 - **Bidirectional text** — each note can follow its content automatically or be
