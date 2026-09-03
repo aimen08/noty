@@ -285,7 +285,7 @@ struct LibraryDetail: View {
                 TextField(
                     "",
                     text: $title,
-                    prompt: Text(note.hasCustomTitle ? "Title" : (Note.derivedTitle(from: text).isEmpty ? "New note" : Note.derivedTitle(from: text)))
+                    prompt: Text(note.hasCustomTitle ? L10n.text("note.title_prompt") : (Note.derivedTitle(from: text).isEmpty ? L10n.text("note.untitled") : Note.derivedTitle(from: text)))
                         .foregroundStyle(.secondary)
                 )
                 .textFieldStyle(.plain)
@@ -293,7 +293,7 @@ struct LibraryDetail: View {
                 .lineLimit(1)
                 .contextMenu {
                     if note.hasCustomTitle {
-                        Button("Reset to Auto Title") {
+                        Button(L10n.text("note.title_reset")) {
                             title = ""
                             NoteStore.shared.updateTitle(id: note.id, title: "")
                         }

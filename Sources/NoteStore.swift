@@ -20,6 +20,7 @@ final class NoteStore: ObservableObject {
 
     private init() {
         notes = store.load()
+        migrateDerivedTitles()
         if notes.isEmpty { seedWelcomeNote() }
     }
 
@@ -29,6 +30,21 @@ final class NoteStore: ObservableObject {
     var archived: [Note] { notes.filter { $0.archived }.sorted { $0.modified > $1.modified } }
 
     func note(id: String) -> Note? { notes.first { $0.id == id } }
+
+    /// Before titles became independent, every body edit wrote the derived
+    /// title into the row, so existing databases hold a stored copy of it in
+    /// every note. Under the new rule a non-empty title is a custom one — which
+    /// would freeze every pre-existing note's tab at whatever its first line
+    /// said on upgrade day. A stored title that still equals the derivation is
+    /// not a choice anyone made; clear it once so those notes keep renaming
+    /// themselves.
+    private func migrateDerivedTitles() {
+        for i in notes.indices where !notes[i].title.isEmpty
+            && notes[i].title == Note.derivedTitle(from: notes[i].body) {
+            notes[i].title = ""
+            store.upsert(notes[i])
+        }
+    }
 
     // MARK: Mutations
 

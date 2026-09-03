@@ -126,6 +126,8 @@
 "note.new_tab" = "新建便笺";
 "note.not_saved" = "尚未保存";
 "note.saved" = "已保存 · %@";
+"note.title_prompt" = "标题";
+"note.title_reset" = "恢复自动标题";
 "note.untitled" = "新便笺";
 "notes.count" = "%ld 篇便笺";
 "notes.more" = "另外 %ld 篇便笺";
