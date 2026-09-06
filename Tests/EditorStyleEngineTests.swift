@@ -24,6 +24,7 @@ struct EditorStyleEngineTests {
         testLegacyArchiveDefaultsToAutomaticDirection()
         testTextDirectionDatabaseMigration()
         LocalizationTests.run { check($0, $1) }
+        TaskMarkerTests.run { check($0, $1) }
         testCustomNoteTitleBehavior()
 
         guard failures == 0 else {

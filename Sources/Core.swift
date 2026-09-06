@@ -345,20 +345,35 @@ enum Tasks {
         return String(line.dropFirst()).trimmingCharacters(in: .whitespaces)
     }
 
-    /// Markdown task syntax in, ☐/☑ out.
-    static func fromMarkdown(_ text: String) -> String {
-        text.replacingOccurrences(of: "^(\\s*)[-*]\\s+\\[[ ]\\]\\s+",
-                                  with: "$1" + openPrefix,
-                                  options: [.regularExpression])
-            .replacingOccurrences(of: "^(\\s*)[-*]\\s+\\[[xX]\\]\\s+",
-                                  with: "$1" + donePrefix,
-                                  options: [.regularExpression])
+    /// `String.replacingOccurrences(options: .regularExpression)` cannot request
+    /// `.anchorsMatchLines`, so `^` there means the start of the whole string and
+    /// only the first task in a document was ever converted. Go through
+    /// NSRegularExpression so every line is anchored.
+    private static func replacingLines(_ pattern: String, in text: String,
+                                       with template: String) -> String {
+        guard let re = try? NSRegularExpression(pattern: pattern,
+                                                options: [.anchorsMatchLines]) else { return text }
+        return re.stringByReplacingMatches(in: text, options: [],
+                                           range: NSRange(text.startIndex..., in: text),
+                                           withTemplate: template)
     }
 
-    /// ☐/☑ out, Markdown task syntax in.
+    /// Markdown task syntax in, ☐/☑ out. `[ \t]` rather than `\s` so a match can
+    /// never swallow the newline and weld two lines together.
+    static func fromMarkdown(_ text: String) -> String {
+        var out = replacingLines("^([ \\t]*)[-*][ \\t]+\\[[ ]\\][ \\t]+", in: text,
+                                 with: "$1" + openPrefix)
+        out = replacingLines("^([ \\t]*)[-*][ \\t]+\\[[xX]\\][ \\t]+", in: out,
+                             with: "$1" + donePrefix)
+        return out
+    }
+
+    /// ☐/☑ out, Markdown task syntax in. Anchored, so a marker used mid-sentence
+    /// stays the character the user typed.
     static func toMarkdown(_ text: String) -> String {
-        text.replacingOccurrences(of: openPrefix, with: "- [ ] ")
-            .replacingOccurrences(of: donePrefix, with: "- [x] ")
+        var out = replacingLines("^([ \\t]*)\(open) ", in: text, with: "$1- [ ] ")
+        out = replacingLines("^([ \\t]*)\(done) ", in: out, with: "$1- [x] ")
+        return out
     }
 }
 
