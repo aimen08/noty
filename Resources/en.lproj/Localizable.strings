@@ -168,6 +168,19 @@
 "settings.shortcuts.in_note" = "In an open note";
 "settings.shortcuts.tab" = "Shortcuts";
 
+"settings.sync.caption" = "Mirror your notes into iCloud Drive so they can be read and edited on iPhone and iPad.";
+"settings.sync.enable" = "Sync notes through iCloud Drive";
+"settings.sync.enable_help" = "Synced notes are written to iCloud Drive as plain Markdown files. They leave the encrypted database — anyone who can reach your iCloud account can read them. The database on this Mac stays encrypted either way.";
+"settings.sync.folder" = "Folder";
+"settings.sync.reveal" = "Show in Finder";
+"settings.sync.status" = "Status";
+"settings.sync.status_last" = "Last synced %@";
+"settings.sync.status_never" = "Waiting for the first sync";
+"settings.sync.status_off" = "Off";
+"settings.sync.status_unavailable" = "iCloud Drive is not available";
+"settings.sync.sync_now" = "Sync Now";
+"settings.sync.tab" = "Sync";
+"settings.sync.unavailable_help" = "Sign in to iCloud and turn on iCloud Drive in System Settings.";
 "settings.updates.automatic" = "Check for updates automatically";
 "settings.updates.caption" = "Noty fetches one file to see whether a newer version exists.";
 "settings.updates.check_now" = "Check Now";

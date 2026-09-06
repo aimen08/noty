@@ -599,6 +599,19 @@ struct NoteEditorView: View {
             title = note.title
             savedAt = note.modified
         }
+        .onChange(of: note.modified) { _, incoming in
+            // A sync pull replaced this note while the editor was open. The
+            // view's own saves stamp `savedAt` at or after the store's
+            // timestamp, so anything strictly newer came from somewhere else —
+            // and without this the next keystroke would write the stale text
+            // back and push it to iCloud.
+            guard incoming > (savedAt ?? .distantPast) else { return }
+            saveWork?.cancel()
+            titleSaveWork?.cancel()
+            text = note.body
+            title = note.title
+            savedAt = incoming
+        }
         .onChange(of: text) { _, v in scheduleSave(v) }
         .onChange(of: title) { _, v in scheduleTitleSave(v) }
         .onChange(of: deck.findQuery) { _, q in

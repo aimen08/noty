@@ -181,6 +181,20 @@ final class NoteStore: ObservableObject {
         return added
     }
 
+    /// Insert or replace a note wholesale, keeping the timestamps it arrives
+    /// with. Sync uses this rather than `ingest`, which renumbers and re-ids its
+    /// input because it is importing strangers — a synced note is the same note,
+    /// carried here from another device.
+    func absorb(_ note: Note) {
+        if let i = notes.firstIndex(where: { $0.id == note.id }) {
+            guard notes[i] != note else { return }
+            notes[i] = note
+        } else {
+            notes.append(note)
+        }
+        store.upsert(note)
+    }
+
     private func seedWelcomeNote() {
         create(body: L10n.text("welcome.note_body"), color: 0)
     }

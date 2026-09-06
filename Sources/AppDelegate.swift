@@ -24,10 +24,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // was opened, so a user who never right-clicked was never offered an
         // update however long the app ran.
         _ = Updater.shared
+
+        // Off unless the user asked for it; reload() is a no-op when it is off.
+        CloudSync.shared.reload()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         HotKeys.shared.unregisterAll()
+    }
+
+    /// Coming back to the Mac is the likeliest moment for the phone's edits to
+    /// be waiting, and the poll may be up to its full interval away.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        CloudSync.shared.syncNow()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
