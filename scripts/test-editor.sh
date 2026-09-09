@@ -19,6 +19,7 @@ swiftc -parse-as-library -swift-version 5 \
     -sdk "$SDK" \
     "${APP_SOURCES[@]}" \
     "$ROOT/Tests/LocalizationTests.swift" \
+    "$ROOT/Tests/PersistenceTests.swift" \
     "$ROOT/Tests/EditorStyleEngineTests.swift" \
     -o "$OUT/EditorStyleEngineTests"
 

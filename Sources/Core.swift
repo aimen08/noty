@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import AppKit
 import CryptoKit
+import Darwin
 
 // MARK: - Paths
 
@@ -18,30 +19,90 @@ enum Paths {
 
 // MARK: - Crypto (AES-GCM for note bodies)
 
-enum Crypto {
-    private static let key: SymmetricKey = {
-        if let d = try? Data(contentsOf: Paths.key), d.count == 32 {
-            return SymmetricKey(data: d)
-        }
-        let k = SymmetricKey(size: .bits256)
-        let d = k.withUnsafeBytes { Data($0) }
-        try? d.write(to: Paths.key, options: [.atomic])
-        try? FileManager.default.setAttributes([.posixPermissions: 0o600],
-                                               ofItemAtPath: Paths.key.path)
-        return k
-    }()
+enum PersistenceError: LocalizedError {
+    case invalidKey, missingKey, corruptBody, database(String), invalidColor
 
-    static func seal(_ text: String) -> Data {
-        guard let box = try? AES.GCM.seal(Data(text.utf8), using: key),
-              let combined = box.combined else { return Data() }
+    var errorDescription: String? {
+        switch self {
+        case .invalidKey: return L10n.text("storage.invalid_key")
+        case .missingKey: return L10n.text("storage.missing_key")
+        case .corruptBody: return L10n.text("storage.corrupt_body")
+        case .database(let message): return message
+        case .invalidColor: return L10n.text("storage.invalid_color")
+        }
+    }
+}
+
+/// Never replace an existing key or accept a key that could not be persisted.
+final class Crypto {
+    private let keyURL: URL
+    private let allowCreation: Bool
+    private var cachedKey: SymmetricKey?
+
+    init(keyURL: URL, allowCreation: Bool) {
+        self.keyURL = keyURL
+        self.allowCreation = allowCreation
+    }
+
+    private func key() throws -> SymmetricKey {
+        if let cachedKey { return cachedKey }
+        let data: Data
+        do {
+            data = try Data(contentsOf: keyURL)
+        } catch let error as NSError {
+            guard error.domain == NSCocoaErrorDomain,
+                  error.code == NSFileReadNoSuchFileError else { throw error }
+            guard allowCreation else { throw PersistenceError.missingKey }
+            let generated = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
+            // Write privately, sync, then install without replacement. Other processes
+            // must never see a partially written key, even if creation fails.
+            let temporary = keyURL.deletingLastPathComponent()
+                .appendingPathComponent(".note-key-\(UUID().uuidString)")
+            let fd = Darwin.open(temporary.path, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+            guard fd >= 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+            defer { Darwin.close(fd); Darwin.unlink(temporary.path) }
+            let count = generated.withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
+            guard count == generated.count, fsync(fd) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno == 0 ? EIO : errno))
+            }
+            guard Darwin.link(temporary.path, keyURL.path) == 0 else {
+                if errno == EEXIST { return try readExistingKey() }
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+            data = generated
+        }
+        guard data.count == 32 else { throw PersistenceError.invalidKey }
+        let key = SymmetricKey(data: data)
+        cachedKey = key
+        return key
+    }
+
+    private func readExistingKey() throws -> SymmetricKey {
+        let data = try Data(contentsOf: keyURL)
+        guard data.count == 32 else { throw PersistenceError.invalidKey }
+        let key = SymmetricKey(data: data)
+        cachedKey = key
+        return key
+    }
+
+    func seal(_ text: String) throws -> Data {
+        let box = try AES.GCM.seal(Data(text.utf8), using: key())
+        guard let combined = box.combined else { throw PersistenceError.corruptBody }
         return combined
     }
 
-    static func open(_ data: Data) -> String {
-        guard !data.isEmpty,
-              let box = try? AES.GCM.SealedBox(combined: data),
-              let plain = try? AES.GCM.open(box, using: key) else { return "" }
-        return String(decoding: plain, as: UTF8.self)
+    func open(_ data: Data) throws -> String {
+        let key = try key()
+        do {
+            let box = try AES.GCM.SealedBox(combined: data)
+            let plain = try AES.GCM.open(box, using: key)
+            guard let text = String(data: plain, encoding: .utf8) else {
+                throw PersistenceError.corruptBody
+            }
+            return text
+        } catch { throw PersistenceError.corruptBody }
     }
 }
 
@@ -347,18 +408,17 @@ enum Tasks {
 
     /// Markdown task syntax in, ☐/☑ out.
     static func fromMarkdown(_ text: String) -> String {
-        text.replacingOccurrences(of: "^(\\s*)[-*]\\s+\\[[ ]\\]\\s+",
-                                  with: "$1" + openPrefix,
-                                  options: [.regularExpression])
-            .replacingOccurrences(of: "^(\\s*)[-*]\\s+\\[[xX]\\]\\s+",
-                                  with: "$1" + donePrefix,
-                                  options: [.regularExpression])
+        text.replacingOccurrences(of: "(?m)^([\\t ]*)[-*][\\t ]+\\[ \\][\\t ]+",
+                                  with: "$1" + openPrefix, options: .regularExpression)
+            .replacingOccurrences(of: "(?m)^([\\t ]*)[-*][\\t ]+\\[[xX]\\][\\t ]+",
+                                  with: "$1" + donePrefix, options: .regularExpression)
     }
 
-    /// ☐/☑ out, Markdown task syntax in.
     static func toMarkdown(_ text: String) -> String {
-        text.replacingOccurrences(of: openPrefix, with: "- [ ] ")
-            .replacingOccurrences(of: donePrefix, with: "- [x] ")
+        text.replacingOccurrences(of: "(?m)^([\\t ]*)☐ ", with: "$1- [ ] ",
+                                  options: .regularExpression)
+            .replacingOccurrences(of: "(?m)^([\\t ]*)☑ ", with: "$1- [x] ",
+                                  options: .regularExpression)
     }
 }
 

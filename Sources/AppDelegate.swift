@@ -26,6 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = Updater.shared
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        NoteStore.shared.flushAll() ? .terminateNow : .terminateCancel
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         HotKeys.shared.unregisterAll()
     }
@@ -149,6 +153,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// window does not sit there claiming a language the running UI never uses.
     func relaunchForLanguageChange(previous: AppLanguage) {
         guard !isRelaunching else { return }
+        guard NoteStore.shared.flushAll() else {
+            Settings.appLanguage = previous
+            SettingsWindow.shared.syncPreferences()
+            return
+        }
         isRelaunching = true
 
         // Hand the new instance everything worth putting back: the expanded

@@ -208,3 +208,13 @@
 "width.standard" = "Standard";
 "width.very_wide" = "Very wide";
 "width.wide" = "Wide";
+
+/* Storage recovery */
+"storage.invalid_key" = "The encryption key is invalid. It has not been replaced.";
+"storage.missing_key" = "The encryption key for your existing notes is missing. Restore the original note.key file before reopening Noty.";
+"storage.corrupt_body" = "A note could not be decrypted. Editing is disabled to protect the original data.";
+"storage.invalid_color" = "The imported note has an invalid colour value.";
+"storage.error_title" = "Noty could not read or save your notes";
+"storage.error_help" = "Your original data has been kept. Unsaved edits remain in this session. Resolve the storage problem and try again; Noty will retry saving before quitting.";
+"storage.import_unsaved" = "Some imported notes could not be saved.";
+"import.invalid_archive" = "This archive is invalid or uses an unsupported version.";

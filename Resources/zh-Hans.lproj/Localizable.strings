@@ -208,3 +208,13 @@
 "width.standard" = "标准";
 "width.very_wide" = "特宽";
 "width.wide" = "宽";
+
+/* Storage recovery */
+"storage.invalid_key" = "加密密钥无效，未替换原密钥。";
+"storage.missing_key" = "现有便笺的加密密钥丢失。请恢复原始 note.key 文件后重新打开 Noty。";
+"storage.corrupt_body" = "无法解密便笺。已禁用编辑以保护原始数据。";
+"storage.invalid_color" = "导入的便笺包含无效的颜色值。";
+"storage.error_title" = "Noty 无法读取或保存便笺";
+"storage.error_help" = "原始数据已保留。未保存的编辑仍保留在本次会话中。请解决存储问题后重试；Noty 会在退出前重新尝试保存。";
+"storage.import_unsaved" = "部分导入的便笺无法保存。";
+"import.invalid_archive" = "此归档无效或使用了不受支持的版本。";

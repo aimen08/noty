@@ -569,11 +569,15 @@ struct NoteEditorView: View {
     unowned let controller: DeckController
     var onRight: Bool = true
 
-    @State private var text = ""
-    @State private var title = ""
-    @State private var saveWork: DispatchWorkItem?
-    @State private var titleSaveWork: DispatchWorkItem?
-    @State private var savedAt: Date?
+    @ObservedObject private var store = NoteStore.shared
+    private var text: String { store.note(id: note.id)?.body ?? "" }
+    private var title: String { store.note(id: note.id)?.title ?? "" }
+    private var textBinding: Binding<String> {
+        Binding(get: { text }, set: { store.updateBody(id: note.id, body: $0) })
+    }
+    private var titleBinding: Binding<String> {
+        Binding(get: { title }, set: { store.updateTitle(id: note.id, title: $0) })
+    }
     @State private var detaching = false
     @FocusState private var findFocused: Bool
     @FocusState private var titleFocused: Bool
@@ -594,13 +598,6 @@ struct NoteEditorView: View {
         )
         .clipShape(noteShape)
         .overlay(noteShape.strokeBorder(Color.black.opacity(0.07), lineWidth: 0.5))
-        .onAppear {
-            text = note.body
-            title = note.title
-            savedAt = note.modified
-        }
-        .onChange(of: text) { _, v in scheduleSave(v) }
-        .onChange(of: title) { _, v in scheduleTitleSave(v) }
         .onChange(of: deck.findQuery) { _, q in
             if q != nil { findFocused = true } else { deck.bridge.focusText() }
         }
@@ -616,7 +613,7 @@ struct NoteEditorView: View {
         VStack(spacing: 0) {
             header
             if deck.findQuery != nil { findBar }
-            NoteTextView(text: $text, ink: NSColor(pal.ink),
+            NoteTextView(text: textBinding, ink: NSColor(pal.ink),
                          bridge: deck.bridge, autofocus: true,
                          fontSize: deck.fontSize,
                          markdownEnabled: deck.markdown,
@@ -689,7 +686,7 @@ struct NoteEditorView: View {
                         .lineLimit(1)
                         .allowsHitTesting(false)
                 }
-                TextField("", text: $title)
+                TextField("", text: titleBinding)
                     .textFieldStyle(.plain)
                     .foregroundStyle(pal.ink.opacity(0.92))
                     .focused($titleFocused)
@@ -703,15 +700,15 @@ struct NoteEditorView: View {
             .contextMenu {
                 if note.hasCustomTitle {
                     Button(L10n.text("note.title_reset")) {
-                        title = ""
                         NoteStore.shared.updateTitle(id: note.id, title: "")
                     }
                 }
             }
 
             Spacer(minLength: 6)
-            Text(savedAt.map { L10n.format("note.saved", Fmt.ago($0)) }
-                 ?? L10n.text("note.not_saved"))
+            Text(store.unsavedIDs.contains(note.id)
+                 ? L10n.text("note.not_saved")
+                 : L10n.format("note.saved", Fmt.ago(note.modified)))
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.42))
             Button { NoteStore.shared.togglePin(id: note.id) } label: {
@@ -829,37 +826,6 @@ struct NoteEditorView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: Autosave — 250 ms after typing stops
-
-    private func scheduleSave(_ value: String) {
-        saveWork?.cancel()
-        let work = DispatchWorkItem {
-            NoteStore.shared.updateBody(id: note.id, body: value)
-            savedAt = Date()
-        }
-        saveWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
-    }
-
-    private func scheduleTitleSave(_ value: String) {
-        titleSaveWork?.cancel()
-        let work = DispatchWorkItem {
-            NoteStore.shared.updateTitle(id: note.id, title: value)
-            savedAt = Date()
-        }
-        titleSaveWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
-    }
-
-    private func flushTitle() {
-        titleSaveWork?.cancel()
-        NoteStore.shared.updateTitle(id: note.id, title: title)
-    }
-
-    private func flush() {
-        saveWork?.cancel()
-        titleSaveWork?.cancel()
-        NoteStore.shared.updateBody(id: note.id, body: text)
-        NoteStore.shared.updateTitle(id: note.id, title: title)
-    }
+    private func flushTitle() { store.flush(id: note.id) }
+    private func flush() { store.flush(id: note.id) }
 }
