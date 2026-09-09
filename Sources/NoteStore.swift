@@ -30,6 +30,7 @@ final class NoteStore: ObservableObject {
         self.onError = onError
         do {
             notes = try store.load()
+            removeOrphanedImages()
             if notes.isEmpty && seedWelcome { seedWelcomeNote() }
         } catch {
             writable = false
@@ -169,6 +170,12 @@ final class NoteStore: ObservableObject {
     /// Removes the note but keeps it recoverable for ten seconds.
     func delete(id: String) {
         guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        // A second delete before the first undo window closes replaces
+        // pendingUndo; the earlier note is then unrecoverable, so its images
+        // are cleaned up now rather than leaked. Done while the new note is
+        // still in `notes` so an image it shares with the earlier note is not
+        // mistaken for unreferenced.
+        finalizePendingDelete()
         let doomed = notes[i]
         do { try store.delete(id: id) }
         catch { report(error); return }
@@ -178,7 +185,7 @@ final class NoteStore: ObservableObject {
         pendingUndo = PendingDelete(note: doomed, deadline: Date().addingTimeInterval(10))
         undoTimer?.invalidate()
         undoTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async { self?.pendingUndo = nil }
+            DispatchQueue.main.async { self?.expireUndo() }
         }
     }
 
@@ -188,6 +195,33 @@ final class NoteStore: ObservableObject {
         notes.append(p.note)
         persist(p.note)
         pendingUndo = nil
+    }
+
+    private func expireUndo() {
+        finalizePendingDelete()
+        pendingUndo = nil
+    }
+
+    /// Image cleanup waits out the undo window: the files must survive as long
+    /// as the note can come back. Ids another note still references are kept —
+    /// one image file may be shared by several notes.
+    private func finalizePendingDelete() {
+        guard let p = pendingUndo else { return }
+        let doomed = Set(ImageStore.referencedIDs(in: p.note.body))
+        guard !doomed.isEmpty else { return }
+        let stillUsed = Set(notes.flatMap { ImageStore.referencedIDs(in: $0.body) })
+        let unreferenced = doomed.subtracting(stillUsed)
+        if !unreferenced.isEmpty { ImageStore.delete(ids: unreferenced.sorted()) }
+    }
+
+    /// Quitting inside the undo window strands the pending note's images (the
+    /// row is already gone from SQLite, so undo cannot survive a relaunch).
+    /// Sweeping unreferenced files once at launch also covers any leak from a
+    /// crash between saving an image and persisting the body that uses it.
+    private func removeOrphanedImages() {
+        let used = Set(notes.flatMap { ImageStore.referencedIDs(in: $0.body) })
+        let orphans = ImageStore.allIDs().filter { !used.contains($0) }
+        if !orphans.isEmpty { ImageStore.delete(ids: orphans) }
     }
 
     /// Move a note `slots` positions up or down the deck, rewriting the order

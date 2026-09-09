@@ -106,6 +106,7 @@
 "menu.export" = "Export";
 "menu.hide" = "Hide Noty";
 "menu.import" = "Import…";
+"menu.insert_image" = "Insert Image…";
 "menu.keep_deck_open" = "Keep deck open";
 "menu.launch_at_login" = "Launch at login";
 "menu.new_note" = "New Note";

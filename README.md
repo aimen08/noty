@@ -112,6 +112,27 @@ Tasks live inline in the note body as `☐` / `☑` prefixes, so a note stays pl
 text. Markdown export writes them as standard `- [ ]` / `- [x]` task syntax and
 import reads that back. All Notes shows a `done/total` count per note.
 
+## Images
+
+Paste (`⌘V` with an image on the clipboard), drag an image file in, or
+right-click → **Insert Image…**. The picture renders inline at full width by
+default; underneath it the body keeps a one-line token,
+`![image](noty-img://<UUID>)`. Unlike the other markdown markers the token
+never surfaces just because the caret is near — clicking the image parks the
+caret right after it, and pressing delete there reveals the token, fully
+selected, as a confirmation step: delete again to remove the image, or type,
+press Return/Space, paste or click elsewhere to keep it and the picture
+comes straight back.
+
+Hover an image for a drag handle at its bottom-right corner; drag to resize,
+and the height follows the aspect ratio. The width is written back into the
+token — `![image|300](noty-img://…)` — so sizes survive restarts and
+export/import.
+
+Images live as files under `~/Library/Application Support/Noty/Images/` and
+are deleted when the last note referencing them is deleted. `.stickies`
+export archives carry them as base64, so a round-trip keeps every picture.
+
 ## Everything else
 
 - **Archived, not deleted.** Archiving pulls a note out of the deck but keeps it
@@ -351,11 +372,15 @@ Sources/
   NoteEditor.swift      NSTextView bridge, find, 250 ms autosave
   LibraryWindow.swift   All Notes / Archive
   ExportImport.swift    md / txt / single file / .stickies
+<<<<<<< HEAD
   NoteDocument.swift    the front-matter markdown form of a note
   CloudFolder.swift     the iCloud Drive folder: paths, names, coordinated I/O
   CloudSyncIndex.swift  what the last sync pass saw
   SyncPlan.swift        pure decision table: notes + files + index → actions
   CloudSync.swift       runs the actions, schedules the passes
+=======
+  ImageStore.swift      on-disk image files, noty-img:// token helpers
+>>>>>>> pr35
   UndoToast.swift       the ten-second undo after a delete
 ```
 
