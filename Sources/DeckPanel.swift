@@ -29,6 +29,7 @@ struct DeckLayout {
     var count: Int
     var hasMore: Bool
     var panelHeight: CGFloat
+    var showsActions = true
 
     /// Negative for shingled tabs — VStack spacing that produces the overlap.
     var spacing: CGFloat { pitch - itemHeight }
@@ -37,8 +38,10 @@ struct DeckLayout {
         guard count > 0 else { return 0 }
         return CGFloat(count - 1) * pitch + itemHeight
             + (hasMore ? moreGap + moreHeight : 0)
-            + DeckGeom.plusGap + DeckGeom.plusSize      // new note
-            + DeckGeom.cogGap + DeckGeom.cogSize        // settings
+            + (showsActions
+               ? DeckGeom.plusGap + DeckGeom.plusSize   // new note
+               + DeckGeom.cogGap + DeckGeom.cogSize     // settings
+               : 0)
     }
 
     var top: CGFloat { max(12, (panelHeight - stackHeight) / 2) }
@@ -148,13 +151,15 @@ enum DeckGeom {
     }
 
     static func layout(panelHeight: CGFloat, count: Int, hasMore: Bool,
-                       style: DeckStyle, longestLabel: CGFloat = 0) -> DeckLayout {
+                       style: DeckStyle, longestLabel: CGFloat = 0,
+                       showsActions: Bool = true) -> DeckLayout {
         let n = max(1, count)
         switch style {
         case .compact:
             return DeckLayout(itemHeight: chipHeight, pitch: chipHeight + chipGap,
                               moreGap: chipGap, moreHeight: 22,
-                              count: n, hasMore: hasMore, panelHeight: panelHeight)
+                              count: n, hasMore: hasMore, panelHeight: panelHeight,
+                              showsActions: showsActions)
         case .tabs:
             // The uncovered strip of each tab is sized to the longest label on the
             // deck, so titles read in full until they hit the cap and ellipsise.
@@ -168,7 +173,8 @@ enum DeckGeom {
             }
             return DeckLayout(itemHeight: pitch + tabLap, pitch: pitch,
                               moreGap: tabGap, moreHeight: moreTabHeight,
-                              count: n, hasMore: hasMore, panelHeight: panelHeight)
+                              count: n, hasMore: hasMore, panelHeight: panelHeight,
+                              showsActions: showsActions)
         }
     }
 }

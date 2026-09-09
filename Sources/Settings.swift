@@ -297,6 +297,14 @@ enum Settings {
         set { d.set(newValue, forKey: "deckAlwaysShown") }
     }
 
+    /// With the deck kept open its + and cog buttons sit on screen all day;
+    /// this trades them for a quieter edge (issue #36). The menu bar icon and
+    /// hotkeys still create notes and open Settings.
+    static var deckHideActions: Bool {
+        get { d.bool(forKey: "deckHideActions") }
+        set { d.set(newValue, forKey: "deckHideActions") }
+    }
+
     /// The size the floating note was last resized to. It starts at the deck
     /// note's size and keeps whatever you stretch it to — a freely placed note
     /// that snapped back to a preset on every pull would feel broken.

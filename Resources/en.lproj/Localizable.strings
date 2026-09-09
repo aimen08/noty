@@ -147,6 +147,8 @@
 "settings.deck.hide_pill_help" = "Nothing shows at rest — no pill, no dashes. Slide the pointer to the screen edge to wake the tabs.";
 "settings.deck.keep_open" = "Keep the deck open";
 "settings.deck.keep_open_help" = "Tabs stay on the edge with their labels showing, instead of folding back into the pill when the pointer leaves.";
+"settings.deck.hide_actions" = "Hide the new-note and settings buttons";
+"settings.deck.hide_actions_help" = "The + and gear buttons leave the open deck. The menu bar icon and shortcuts still create notes and open Settings.";
 "settings.deck.language" = "Language";
 "settings.deck.language_help" = "Noty restarts automatically when you change the language.";
 "settings.deck.size" = "Size";

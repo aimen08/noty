@@ -26,7 +26,8 @@ struct DeckRootView: View {
     private func layout(_ panelHeight: CGFloat) -> DeckLayout {
         DeckGeom.layout(panelHeight: panelHeight, count: itemCount,
                         hasMore: showsMoreTab, style: deck.style,
-                        longestLabel: longestLabel)
+                        longestLabel: longestLabel,
+                        showsActions: !(deck.alwaysShown && deck.hideActions))
     }
 
     var body: some View {
@@ -231,7 +232,7 @@ struct FanColumn: View {
     /// explicit `zIndex` per tab is *not* equivalent — it reorders neighbours and
     /// breaks the shingle.
     private var stack: some View {
-        let total = notes.count + (hiddenCount > 0 ? 1 : 0) + 2
+        let total = notes.count + (hiddenCount > 0 ? 1 : 0) + (layout.showsActions ? 2 : 0)
         return VStack(spacing: layout.spacing) {
             if notes.isEmpty {
                 EmptyTab(height: layout.itemHeight, strip: layout.pitch, onRight: onRight) {
@@ -300,14 +301,20 @@ struct FanColumn: View {
                 .padding(.top, layout.moreGap - layout.spacing)   // undo the lap
                 .staged(index: notes.count, total: total, revealed: isRevealed, onRight: onRight)
             }
-            PlusButton { (NSApp.delegate as? AppDelegate)?.newNote() }
-                .padding(.top, DeckGeom.plusGap - layout.spacing)
-                .staged(index: notes.count + (hiddenCount > 0 ? 1 : 0), total: total, revealed: isRevealed, onRight: onRight)
-            CogButton { (NSApp.delegate as? AppDelegate)?.openSettings() }
-                .padding(.top, DeckGeom.cogGap - layout.spacing)
-                .staged(index: notes.count + (hiddenCount > 0 ? 1 : 0) + 1, total: total, revealed: isRevealed, onRight: onRight)
+            if layout.showsActions {
+                PlusButton { (NSApp.delegate as? AppDelegate)?.newNote() }
+                    .padding(.top, DeckGeom.plusGap - layout.spacing)
+                    .staged(index: notes.count + (hiddenCount > 0 ? 1 : 0), total: total, revealed: isRevealed, onRight: onRight)
+                CogButton { (NSApp.delegate as? AppDelegate)?.openSettings() }
+                    .padding(.top, DeckGeom.cogGap - layout.spacing)
+                    .staged(index: notes.count + (hiddenCount > 0 ? 1 : 0) + 1, total: total, revealed: isRevealed, onRight: onRight)
+            }
         }
         .frame(width: DeckGeom.tabWidth)
+        // Create, archive, delete or reorder: the surviving tabs glide to
+        // their new slots instead of snapping (issue #34). Keyed on the ids so
+        // a drag in progress — same ids — is never slowed down by it.
+        .animation(.easeInOut(duration: 0.18), value: notes.map(\.id))
     }
 
     private func handleHover(note: Note, inside: Bool) {

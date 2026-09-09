@@ -147,6 +147,8 @@
 "settings.deck.hide_pill_help" = "空闲时不显示任何内容——没有胶囊，也没有色条。将指针移到屏幕边缘即可唤出标签。";
 "settings.deck.keep_open" = "保持便笺栏展开";
 "settings.deck.keep_open_help" = "指针移开后，标签及其文字仍显示在边缘，不会折叠成胶囊。";
+"settings.deck.hide_actions" = "隐藏新建便笺和设置按钮";
+"settings.deck.hide_actions_help" = "展开的便笺栏中不再显示 + 和齿轮按钮。菜单栏图标和快捷键仍可新建便笺、打开设置。";
 "settings.deck.language" = "语言";
 "settings.deck.language_help" = "更改语言后，Noty 会自动重新启动。";
 "settings.deck.size" = "大小";
