@@ -274,6 +274,18 @@ enum Settings {
         set { d.set(newValue, forKey: "markdownStyling") }
     }
 
+    /// Mirror notes into iCloud Drive. Off by default and deliberately so: a
+    /// synced note is written out as plain Markdown, which takes it out of the
+    /// AES-GCM database. Nobody gets that by accident.
+    static var cloudSyncEnabled: Bool {
+        get { d.bool(forKey: "cloudSyncEnabled") }
+        set { d.set(newValue, forKey: "cloudSyncEnabled") }
+    }
+
+    /// How often the sync folder is re-listed. A pass only reads files whose
+    /// modification date moved, so this is a directory listing, not a re-read.
+    static let cloudSyncInterval: TimeInterval = 5
+
     /// How long the deck may sit untouched before it tidies itself away.
     static let fanIdleTimeout: TimeInterval = 4
     static let noteIdleTimeout: TimeInterval = 60
