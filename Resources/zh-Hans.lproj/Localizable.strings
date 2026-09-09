@@ -106,6 +106,7 @@
 "menu.export" = "导出";
 "menu.hide" = "隐藏 Noty";
 "menu.import" = "导入…";
+"menu.insert_image" = "插入图片…";
 "menu.keep_deck_open" = "保持便笺栏展开";
 "menu.launch_at_login" = "登录时启动";
 "menu.new_note" = "新建便笺";

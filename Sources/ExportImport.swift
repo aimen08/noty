@@ -4,10 +4,14 @@ import UniformTypeIdentifiers
 // MARK: - Archive format
 
 struct StickyArchive: Codable {
-    var version = 2
+    var version = 3
     var app = "Noty"
     var exported = Date()
     var notes: [StickyNote]
+    /// Image id → base64 file bytes for every `noty-img` token used by `notes`,
+    /// so an archive is self-contained. Optional because archives written
+    /// before image support (version ≤ 2) simply lack the key.
+    var images: [String: String]?
 }
 
 struct StickyNote: Codable {
@@ -127,7 +131,9 @@ enum Transfer {
         panel.allowsOtherFileTypes = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
-        let archive = StickyArchive(notes: notes.map(StickyNote.init))
+        var archive = StickyArchive(notes: notes.map(StickyNote.init))
+        let images = archiveImages(for: notes)
+        archive.images = images.isEmpty ? nil : images
         let enc = JSONEncoder()
         enc.outputFormatting = [.prettyPrinted, .sortedKeys]
         enc.dateEncodingStrategy = .iso8601
@@ -139,12 +145,28 @@ enum Transfer {
         }
     }
 
+    /// The bytes behind every image token in the exported notes, keyed by id.
+    /// Ids are stable across export/import, so one image shared by several
+    /// notes is stored once.
+    private static func archiveImages(for notes: [Note]) -> [String: String] {
+        var out: [String: String] = [:]
+        for n in notes {
+            for id in ImageStore.referencedIDs(in: n.body) {
+                guard out[id] == nil, let data = ImageStore.data(id: id) else { continue }
+                out[id] = data.base64EncodedString()
+            }
+        }
+        return out
+    }
+
     private static func markdownBody(_ n: Note) -> String {
         let source = Tasks.toMarkdown(n.body)
         let lines = source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         let first = lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
         // Promote a bare first line to an H1 so the file reads as a document.
-        if !first.isEmpty && !first.hasPrefix("#") && !first.hasPrefix("- [") {
+        // An image token must stay verbatim, or the round trip loses the image.
+        if !first.isEmpty && !first.hasPrefix("#") && !first.hasPrefix("- [")
+            && !Note.isImageTokenLine(first) {
             return (["# " + first] + lines.dropFirst()).joined(separator: "\n")
         }
         return source
@@ -174,7 +196,14 @@ enum Transfer {
                 let dec = JSONDecoder()
                 dec.dateDecodingStrategy = .iso8601
                 if let archive = try? dec.decode(StickyArchive.self, from: data) {
-                    incoming += archive.notes.map(\.note)
+                    let remapped = restoreImages(archive.images ?? [:])
+                    incoming += archive.notes.map { sticky in
+                        var n = sticky.note
+                        if !remapped.isEmpty {
+                            n.body = Self.remapImageIDs(in: n.body, mapping: remapped)
+                        }
+                        return n
+                    }
                 } else {
                     failed.append(url.lastPathComponent)
                 }
@@ -202,6 +231,46 @@ enum Transfer {
     }
 
     // MARK: Helpers
+
+    /// Writes an archive's bundled images back to disk. An id already present
+    /// is the same image (export copies the file unchanged), so it is skipped
+    /// and its tokens stay valid. `ImageStore.save` always mints a fresh id,
+    /// so the returned old→new mapping must be applied to the imported bodies.
+    private static func restoreImages(_ images: [String: String]) -> [String: String] {
+        var remapped: [String: String] = [:]
+        for (oldID, b64) in images {
+            guard ImageStore.data(id: oldID) == nil else { continue }
+            guard let data = Data(base64Encoded: b64),
+                  let newID = ImageStore.save(data: data, ext: imageExt(for: data)) else { continue }
+            if newID != oldID { remapped[oldID] = newID }
+        }
+        return remapped
+    }
+
+    /// Rewrites image tokens to the ids the images actually landed under.
+    /// Tokens are replaced whole (preserving any width) in reverse order so
+    /// the ranges stay valid against the original string.
+    private static func remapImageIDs(in body: String, mapping: [String: String]) -> String {
+        var result = body as NSString
+        for token in ImageStore.tokens(in: body).reversed() {
+            guard let newID = mapping[token.id] else { continue }
+            result = result.replacingCharacters(
+                in: token.range,
+                with: ImageStore.token(id: newID, width: token.width)) as NSString
+        }
+        return result as String
+    }
+
+    /// Archives carry only the bytes, but `save(data:ext:)` wants an extension,
+    /// so sniff the common formats. NSImage sniffs content too, so a wrong
+    /// guess would only affect the file name, never rendering.
+    private static func imageExt(for data: Data) -> String {
+        let head = [UInt8](data.prefix(4))
+        if head.starts(with: [0x89, 0x50, 0x4E, 0x47]) { return "png" }
+        if head.starts(with: [0xFF, 0xD8, 0xFF]) { return "jpg" }
+        if head.starts(with: [0x47, 0x49, 0x46, 0x38]) { return "gif" }
+        return "png"
+    }
 
     private static func safeName(_ n: Note) -> String {
         let raw = n.displayTitle

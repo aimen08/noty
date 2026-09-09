@@ -604,6 +604,8 @@ struct NotePreviewCard: View {
                 }
 
                 let lines = note.body.split(whereSeparator: \.isNewline).map(String.init)
+                    .map(Note.strippingImageTokens)
+                    .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
                 let previewLines = Array((note.hasCustomTitle ? lines : Array(lines.dropFirst())).prefix(4))
                 if !previewLines.isEmpty {
                     VStack(alignment: .leading, spacing: 3) {

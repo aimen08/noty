@@ -280,13 +280,42 @@ struct Note: Identifiable, Hashable {
     }
 
     /// Title shown in the fan / lists, derived from the first non-empty line.
+    /// Image tokens are stripped out, so a note that opens with a picture is
+    /// named by its first words rather than by `![image](noty-img://…)`.
     static func derivedTitle(from body: String) -> String {
-        let line = body.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
-        var clean = line.trimmingCharacters(in: .whitespaces)
-            .replacingOccurrences(of: "^#{1,6}\\s*", with: "", options: .regularExpression)
-        clean = Tasks.stripped(clean)
-        if clean.isEmpty { return "" }
-        return clean.count > 60 ? String(clean.prefix(60)) + "…" : clean
+        for raw in body.split(whereSeparator: \.isNewline) {
+            var clean = strippingImageTokens(String(raw))
+                .trimmingCharacters(in: .whitespaces)
+                .replacingOccurrences(of: "^#{1,6}\\s*", with: "", options: .regularExpression)
+            clean = Tasks.stripped(clean)
+            if clean.isEmpty { continue }
+            return clean.count > 60 ? String(clean.prefix(60)) + "…" : clean
+        }
+        return ""
+    }
+
+    /// The line with every image token removed. A token-only line becomes "",
+    /// and a mixed line keeps just its words — one-line summaries (title,
+    /// preview) never leak the raw `noty-img` URL into the UI.
+    static func strippingImageTokens(_ line: String) -> String {
+        let tokens = ImageStore.tokens(in: line)
+        guard !tokens.isEmpty else { return line }
+        var ns = line as NSString
+        for token in tokens.reversed() {
+            ns = ns.replacingCharacters(in: token.range, with: "") as NSString
+        }
+        return ns as String
+    }
+
+    /// True when a line holds nothing but one image token. One-line summaries
+    /// (title, preview) skip these so a leading picture does not leak its raw
+    /// `noty-img` URL into the UI.
+    static func isImageTokenLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return false }
+        let tokens = ImageStore.tokens(in: trimmed)
+        guard tokens.count == 1, let t = tokens.first else { return false }
+        return t.range.location == 0 && t.range.length == (trimmed as NSString).length
     }
 
     var displayTitle: String {
@@ -312,9 +341,12 @@ struct Note: Identifiable, Hashable {
     /// Collapsed snippet used as list subtitle.
     /// If the note has an independent custom title, the first line of the body is
     /// part of the content and included in the preview; otherwise the first line
-    /// is skipped because it already serves as the title.
+    /// is skipped because it already serves as the title. Image tokens are
+    /// stripped first, so the skipped/taken lines line up with `derivedTitle`.
     var preview: String {
         let lines = body.split(whereSeparator: \.isNewline).map(String.init)
+            .map(Self.strippingImageTokens)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let rest = (hasCustomTitle ? lines : Array(lines.dropFirst()))
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
