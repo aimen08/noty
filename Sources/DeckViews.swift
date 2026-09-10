@@ -771,6 +771,13 @@ extension View {
             Button(L10n.text("help.cycle_colour")) { NoteStore.shared.cycleColor(id: note.id) }
             Divider()
             Button(L10n.text("action.delete")) { NoteStore.shared.delete(id: note.id) }
+            // With the deck's + and cog buttons hidden (issue #36 toggle), a
+            // tab's menu is the only pointer-reachable door to these two.
+            if Settings.deckAlwaysShown && Settings.deckHideActions {
+                Divider()
+                Button(L10n.text("menu.new_note")) { (NSApp.delegate as? AppDelegate)?.newNote() }
+                Button(L10n.text("menu.settings")) { (NSApp.delegate as? AppDelegate)?.openSettings() }
+            }
         }
     }
 }
