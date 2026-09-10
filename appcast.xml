@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.6.1</title>
-      <pubDate>Thu, 03 Sep 2026 15:39:39 +0000</pubDate>
-      <sparkle:version>115</sparkle:version>
-      <sparkle:shortVersionString>1.6.1</sparkle:shortVersionString>
+      <title>1.7.0</title>
+      <pubDate>Thu, 10 Sep 2026 03:49:03 +0000</pubDate>
+      <sparkle:version>126</sparkle:version>
+      <sparkle:shortVersionString>1.7.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.6.1</p><ul><li><a href="https://github.com/aimen08/noty/pull/31">#31</a> fix: include first body line in preview when custom title is set &mdash; @yifjfgup</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/30">#30</a> Hover preview card displays &quot;Empty note&quot; for notes with custom titles and   single-line bodies &mdash; requested by @yifjfgup</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.6.1/Noty.dmg" type="application/octet-stream" sparkle:edSignature="SxJ/LCYDLImo6tMvpZILE4xDG8XipcOs1dt2CdQufwka9prKQVJNJLeUxejuTCXLDGpI71/zRhglU/NAmshDAw==" length="1967841" />
+      <description><![CDATA[<p>Noty 1.7.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/33">#33</a> Sync notes to iPhone and iPad through the iCloud Drive folder &mdash; @vasyakrg</li><li><a href="https://github.com/aimen08/noty/pull/35">#35</a> Inline images in note bodies &mdash; @Libeny</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/32">#32</a> Sync notes to iPhone/iPad through the iCloud Drive folder — would you want this? &mdash; requested by @vasyakrg</li><li><a href="https://github.com/aimen08/noty/issues/34">#34</a> Feature idea: animated reflow when notes join or leave the deck &mdash; requested by @workingpleasewait</li><li><a href="https://github.com/aimen08/noty/issues/36">#36</a> Hide tool icons &mdash; requested by @xiatouman</li></ul><p>Thanks to @Libeny, @vasyakrg.</p>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.7.0/Noty.dmg" type="application/octet-stream" sparkle:edSignature="40jERrkUrI/ZMAbgcNWT7GrJAU83eUuPpWmHpZM9oocI9/UWqfby0Lg2c5+HKxVzZbKAWex99bg/x8N18qY2Cw==" length="2107672" />
     </item>
   </channel>
 </rss>
