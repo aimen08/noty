@@ -117,6 +117,175 @@ final class HidingLayoutManager: NSLayoutManager {
 /// toggles it, Return carries the list on, and finished lines get struck through.
 final class TaskTextView: NSTextView {
 
+    /// Owns the image overlays and the line-height delegate for image tokens.
+    /// Installed by NoteTextView.makeNSView; kept on the view so the editor
+    /// coordinator can refresh it after every style pass.
+    var imageOverlays: NoteImageOverlayManager?
+
+    /// The image token currently revealed for delete-confirmation, if any.
+    /// Image markup is never shown just because the caret is near it; the only
+    /// way to see the path is to press delete at the image, which selects the
+    /// token text so a second delete removes it and a paste replaces it.
+    var revealedImageID: String?
+
+    override func deleteBackward(_ sender: Any?) {
+        // A range selection means the user deliberately selected content —
+        // delete it straight away, confirmation is for caret deletions only.
+        if selectedRange().length == 0, let token = hiddenImageTokenAtDeletionPoint() {
+            revealedImageID = token.id
+            setSelectedRange(token.range)
+            return
+        }
+        super.deleteBackward(sender)
+    }
+
+    /// While a token sits revealed for delete-confirmation its whole range
+    /// stays selected; typing, Return or pasting would silently replace the
+    /// markup and orphan the image. Treat those as "keep it": move the caret
+    /// below the image, which makes the coordinator clear the reveal and
+    /// re-hide the line.
+    private func cancelImageRevealIfSelected() -> Bool {
+        guard let id = revealedImageID, let storage = textStorage,
+              let token = ImageStore.tokens(in: storage.string).first(where: { $0.id == id }),
+              selectedRange() == token.range else { return false }
+        var caret = NSMaxRange(token.range)
+        if caret < storage.length, (storage.string as NSString).character(at: caret) == 10 {
+            caret += 1
+        }
+        setSelectedRange(NSRange(location: caret, length: 0))
+        return true
+    }
+
+    override func insertText(_ string: Any) {
+        if cancelImageRevealIfSelected() { return }
+        super.insertText(string)
+    }
+
+    override func insertNewline(_ sender: Any?) {
+        if cancelImageRevealIfSelected() { return }
+        super.insertNewline(sender)
+    }
+
+    /// Symmetric with backspace-after-the-image: forward-deleting INTO a
+    /// hidden token reveals it for confirmation instead of eating a markup
+    /// character the user cannot see.
+    override func deleteForward(_ sender: Any?) {
+        if selectedRange().length == 0, let storage = textStorage,
+           let token = ImageStore.tokens(in: storage.string)
+               .first(where: { $0.range.location == selectedRange().location }),
+           storage.attribute(.notyHidden, at: token.range.location,
+                             effectiveRange: nil) != nil {
+            revealedImageID = token.id
+            setSelectedRange(token.range)
+            return
+        }
+        super.deleteForward(sender)
+    }
+
+    // MARK: Character-like image navigation
+
+    /// A hidden image token collapses to zero glyphs but should still walk
+    /// like one character: arrow keys never park the caret inside the dozens
+    /// of invisible markup characters. Left/right snap to the edge in the
+    /// direction of travel; up/down land on the nearer edge.
+    override func moveRight(_ sender: Any?) {
+        super.moveRight(sender)
+        snapCaretOutOfHiddenImageToken(edge: .trailing)
+    }
+
+    override func moveLeft(_ sender: Any?) {
+        super.moveLeft(sender)
+        snapCaretOutOfHiddenImageToken(edge: .leading)
+    }
+
+    override func moveUp(_ sender: Any?) {
+        super.moveUp(sender)
+        snapCaretOutOfHiddenImageToken(edge: .nearest)
+    }
+
+    override func moveDown(_ sender: Any?) {
+        super.moveDown(sender)
+        snapCaretOutOfHiddenImageToken(edge: .nearest)
+    }
+
+    private enum ImageCaretEdge { case leading, trailing, nearest }
+
+    private func snapCaretOutOfHiddenImageToken(edge: ImageCaretEdge) {
+        guard let storage = textStorage else { return }
+        let caret = selectedRange()
+        guard caret.length == 0 else { return }
+        for token in ImageStore.tokens(in: storage.string)
+        where caret.location > token.range.location && caret.location < NSMaxRange(token.range) {
+            guard storage.attribute(.notyHidden, at: token.range.location,
+                                    effectiveRange: nil) != nil else { return }
+            let target: Int
+            switch edge {
+            case .leading: target = token.range.location
+            case .trailing: target = NSMaxRange(token.range)
+            case .nearest:
+                let mid = token.range.location + token.range.length / 2
+                target = caret.location <= mid ? token.range.location : NSMaxRange(token.range)
+            }
+            setSelectedRange(NSRange(location: target, length: 0))
+            return
+        }
+    }
+
+    /// The hidden image token a caret-backspace would eat into, if any: the
+    /// caret sits inside/right after the markup (arrow keys can walk it onto
+    /// the collapsed line), or directly below the image where deleting would
+    /// consume the token line's newline.
+    private func hiddenImageTokenAtDeletionPoint() -> (id: String, width: CGFloat?, range: NSRange)? {
+        guard let storage = textStorage else { return nil }
+        let caret = selectedRange().location
+        let ns = storage.string as NSString
+        for token in ImageStore.tokens(in: storage.string) {
+            guard token.range.location < storage.length,
+                  storage.attribute(.notyHidden, at: token.range.location,
+                                    effectiveRange: nil) != nil else { continue }
+            if caret > token.range.location, caret <= NSMaxRange(token.range) { return token }
+            if caret == NSMaxRange(token.range) + 1, caret > 0,
+               ns.character(at: caret - 1) == 10 { return token }
+        }
+        return nil
+    }
+
+    override init(frame frameRect: NSRect, textContainer container: NSTextContainer?) {
+        super.init(frame: frameRect, textContainer: container)
+        registerForDraggedTypes([.fileURL, .tiff, .png])
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForDraggedTypes([.fileURL, .tiff, .png])
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        TaskTextView.wireEditMenu()
+    }
+
+    /// The Edit menu is built in AppDelegate, but the insert action belongs to
+    /// whichever note has focus, so the item's target is left nil and travels
+    /// the responder chain to this view.
+    private static var editMenuWired = false
+
+    private static func wireEditMenu() {
+        guard !editMenuWired, let mainMenu = NSApp.mainMenu else { return }
+        guard let edit = mainMenu.items.first(where: {
+            $0.submenu?.title == L10n.text("menu.edit")
+        })?.submenu else { return }
+        let action = #selector(insertImageFromPanel(_:))
+        guard !edit.items.contains(where: { $0.action == action }) else {
+            editMenuWired = true
+            return
+        }
+        edit.addItem(.separator())
+        edit.addItem(withTitle: L10n.text("menu.insert_image"),
+                     action: action, keyEquivalent: "")
+        editMenuWired = true
+    }
+
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         if toggleBox(at: point) { return }
@@ -196,6 +365,91 @@ final class TaskTextView: NSTextView {
         didChangeText()
         return true
     }
+
+    // MARK: Images
+
+    /// A plain-text view validates ⌘V off when the pasteboard holds only image
+    /// data, which would keep paste(_:) from ever seeing it. Claim the command
+    /// whenever the clipboard can provide an image.
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        if (item.action == #selector(paste(_:)) || item.action == #selector(pasteAsPlainText(_:))),
+           ImagePasteboard.canProvideImage(.general) {
+            return true
+        }
+        return super.validateUserInterfaceItem(item)
+    }
+
+    /// An image on the pasteboard becomes a token on its own line; everything
+    /// else keeps the plain-text paste behaviour.
+    override func paste(_ sender: Any?) {
+        if cancelImageRevealIfSelected() { return }
+        let ids = ImagePasteboard.imageIDs(from: .general)
+        guard !ids.isEmpty else {
+            super.paste(sender)
+            return
+        }
+        insertImageTokens(ids.map { ImageStore.token(id: $0, width: nil) })
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        ImagePasteboard.canProvideImage(sender.draggingPasteboard)
+            ? .copy : super.draggingEntered(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let ids = ImagePasteboard.imageIDs(from: sender.draggingPasteboard)
+        guard !ids.isEmpty else { return super.performDragOperation(sender) }
+        let point = convert(sender.draggingLocation, from: nil)
+        setSelectedRange(NSRange(location: characterIndexForInsertion(at: point), length: 0))
+        insertImageTokens(ids.map { ImageStore.token(id: $0, width: nil) })
+        return true
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = super.menu(for: event) ?? NSMenu()
+        menu.addItem(.separator())
+        let item = NSMenuItem(title: L10n.text("menu.insert_image"),
+                              action: #selector(insertImageFromPanel(_:)),
+                              keyEquivalent: "")
+        item.target = self
+        menu.addItem(item)
+        return menu
+    }
+
+    @objc func insertImageFromPanel(_ sender: Any?) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK else { return }
+        let ids = panel.urls.compactMap { ImagePasteboard.saveFile(at: $0) }
+        insertImageTokens(ids.map { ImageStore.token(id: $0, width: nil) })
+    }
+
+    /// Insert each token on its own line at the caret as one undoable edit —
+    /// the same shouldChangeText / replaceCharacters / didChangeText pattern
+    /// as EditorBridge.toggleTaskLine, so undo and the style pipeline see a
+    /// normal text change. The caret lands on a fresh line BELOW the token:
+    /// leaving it on the token's own line would trip the caret-line reveal and
+    /// show raw markup instead of the image the user just dropped in.
+    func insertImageTokens(_ tokens: [String]) {
+        guard !tokens.isEmpty, let storage = textStorage else { return }
+        let ns = storage.string as NSString
+        var range = selectedRange()
+        if range.location == NSNotFound { range = NSRange(location: ns.length, length: 0) }
+        range = NSIntersectionRange(range, NSRange(location: 0, length: ns.length))
+        let atLineStart = range.location == 0 || ns.character(at: range.location - 1) == 10
+        let atLineEnd = NSMaxRange(range) >= ns.length
+            || ns.character(at: NSMaxRange(range)) == 10
+        var insertion = tokens.joined(separator: "\n") + "\n"
+        if !atLineStart { insertion = "\n" + insertion }
+        if !atLineEnd { insertion += "\n" }
+        guard shouldChangeText(in: range, replacementString: insertion) else { return }
+        storage.replaceCharacters(in: range, with: insertion)
+        didChangeText()
+        setSelectedRange(NSRange(location: range.location + (insertion as NSString).length,
+                                 length: 0))
+    }
 }
 
 struct NoteTextView: NSViewRepresentable {
@@ -270,6 +524,10 @@ struct NoteTextView: NSViewRepresentable {
                          textDirection: textDirection)
         Self.applyTextDirection(textDirection, to: tv)
         context.coordinator.attach(to: tv)
+        let overlays = NoteImageOverlayManager()
+        overlays.attach(to: tv, scrollView: scroll)
+        tv.imageOverlays = overlays
+        overlays.refresh()
         if autofocus {
             DispatchQueue.main.async { tv.window?.makeFirstResponder(tv) }
         }
@@ -311,6 +569,7 @@ struct NoteTextView: NSViewRepresentable {
         EditorStyleEngine.apply(to: tv,
                                 ranges: ranges,
                                 revealing: activeLine,
+                                forceRevealImageID: (tv as? TaskTextView)?.revealedImageID,
                                 ink: ink,
                                 size: size,
                                 markdownEnabled: markdownEnabled,
@@ -382,6 +641,29 @@ struct NoteTextView: NSViewRepresentable {
             guard !edits.hasPendingEdits else { return }
 
             let line = activeLine(in: tv)
+
+            // A revealed (delete-confirmation) image token hides again once the
+            // caret leaves its markup or the markup stops parsing as a token.
+            if let taskView = tv as? TaskTextView, let id = taskView.revealedImageID {
+                let token = ImageStore.tokens(in: taskView.string).first { $0.id == id }
+                let caret = taskView.selectedRange()
+                let inside = token.map { t in
+                    // The reveal's whole-token selection counts as inside; a
+                    // bare caret only up to the markup's end, so cancelling
+                    // (caret parked just past it) still re-hides the line.
+                    caret.length > 0
+                        ? NSIntersectionRange(caret, t.range).length > 0
+                        : caret.location >= t.range.location && caret.location < NSMaxRange(t.range)
+                } ?? false
+                if !inside {
+                    taskView.revealedImageID = nil
+                    let previous = lastLine
+                    lastLine = line
+                    applyIncremental([previous, line], to: tv, invalidateCursors: false)
+                    return
+                }
+            }
+
             guard parent.markdownEnabled else {
                 lastLine = line
                 return
@@ -434,6 +716,9 @@ struct NoteTextView: NSViewRepresentable {
                                      textDirection: parent.textDirection)
             isApplyingStyles = false
             lastLine = line
+            // The hidden-token set may have changed; overlays and reserved line
+            // heights are rebuilt from the freshly styled attributes.
+            (tv as? TaskTextView)?.imageOverlays?.refresh()
             if invalidateCursors { tv.window?.invalidateCursorRects(for: tv) }
         }
 
@@ -462,6 +747,7 @@ struct NoteTextView: NSViewRepresentable {
             lastLine = line
             needsFullPass = false
             rememberConfiguration()
+            (tv as? TaskTextView)?.imageOverlays?.refresh()
             tv.window?.invalidateCursorRects(for: tv)
         }
 
@@ -569,11 +855,15 @@ struct NoteEditorView: View {
     unowned let controller: DeckController
     var onRight: Bool = true
 
-    @State private var text = ""
-    @State private var title = ""
-    @State private var saveWork: DispatchWorkItem?
-    @State private var titleSaveWork: DispatchWorkItem?
-    @State private var savedAt: Date?
+    @ObservedObject private var store = NoteStore.shared
+    private var text: String { store.note(id: note.id)?.body ?? "" }
+    private var title: String { store.note(id: note.id)?.title ?? "" }
+    private var textBinding: Binding<String> {
+        Binding(get: { text }, set: { store.updateBody(id: note.id, body: $0) })
+    }
+    private var titleBinding: Binding<String> {
+        Binding(get: { title }, set: { store.updateTitle(id: note.id, title: $0) })
+    }
     @State private var detaching = false
     @FocusState private var findFocused: Bool
     @FocusState private var titleFocused: Bool
@@ -594,13 +884,6 @@ struct NoteEditorView: View {
         )
         .clipShape(noteShape)
         .overlay(noteShape.strokeBorder(Color.black.opacity(0.07), lineWidth: 0.5))
-        .onAppear {
-            text = note.body
-            title = note.title
-            savedAt = note.modified
-        }
-        .onChange(of: text) { _, v in scheduleSave(v) }
-        .onChange(of: title) { _, v in scheduleTitleSave(v) }
         .onChange(of: deck.findQuery) { _, q in
             if q != nil { findFocused = true } else { deck.bridge.focusText() }
         }
@@ -616,7 +899,7 @@ struct NoteEditorView: View {
         VStack(spacing: 0) {
             header
             if deck.findQuery != nil { findBar }
-            NoteTextView(text: $text, ink: NSColor(pal.ink),
+            NoteTextView(text: textBinding, ink: NSColor(pal.ink),
                          bridge: deck.bridge, autofocus: true,
                          fontSize: deck.fontSize,
                          markdownEnabled: deck.markdown,
@@ -689,7 +972,7 @@ struct NoteEditorView: View {
                         .lineLimit(1)
                         .allowsHitTesting(false)
                 }
-                TextField("", text: $title)
+                TextField("", text: titleBinding)
                     .textFieldStyle(.plain)
                     .foregroundStyle(pal.ink.opacity(0.92))
                     .focused($titleFocused)
@@ -703,15 +986,15 @@ struct NoteEditorView: View {
             .contextMenu {
                 if note.hasCustomTitle {
                     Button(L10n.text("note.title_reset")) {
-                        title = ""
                         NoteStore.shared.updateTitle(id: note.id, title: "")
                     }
                 }
             }
 
             Spacer(minLength: 6)
-            Text(savedAt.map { L10n.format("note.saved", Fmt.ago($0)) }
-                 ?? L10n.text("note.not_saved"))
+            Text(store.unsavedIDs.contains(note.id)
+                 ? L10n.text("note.not_saved")
+                 : L10n.format("note.saved", Fmt.ago(note.modified)))
                 .font(.system(size: 10))
                 .foregroundStyle(pal.ink.opacity(0.42))
             Button { NoteStore.shared.togglePin(id: note.id) } label: {
@@ -829,37 +1112,6 @@ struct NoteEditorView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: Autosave — 250 ms after typing stops
-
-    private func scheduleSave(_ value: String) {
-        saveWork?.cancel()
-        let work = DispatchWorkItem {
-            NoteStore.shared.updateBody(id: note.id, body: value)
-            savedAt = Date()
-        }
-        saveWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
-    }
-
-    private func scheduleTitleSave(_ value: String) {
-        titleSaveWork?.cancel()
-        let work = DispatchWorkItem {
-            NoteStore.shared.updateTitle(id: note.id, title: value)
-            savedAt = Date()
-        }
-        titleSaveWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
-    }
-
-    private func flushTitle() {
-        titleSaveWork?.cancel()
-        NoteStore.shared.updateTitle(id: note.id, title: title)
-    }
-
-    private func flush() {
-        saveWork?.cancel()
-        titleSaveWork?.cancel()
-        NoteStore.shared.updateBody(id: note.id, body: text)
-        NoteStore.shared.updateTitle(id: note.id, title: title)
-    }
+    private func flushTitle() { store.flush(id: note.id) }
+    private func flush() { store.flush(id: note.id) }
 }

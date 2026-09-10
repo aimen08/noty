@@ -8,11 +8,15 @@ private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.sel
 final class Store {
     private var db: OpaquePointer?
 
-    init(dbURL: URL = Paths.db) {
+    private var cipher: Crypto!
+    private var failure: Error?
+
+    init(dbURL: URL = Paths.db, keyURL: URL = Paths.key) {
         if sqlite3_open_v2(dbURL.path, &db,
                            SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
                            nil) != SQLITE_OK {
-            NSLog("Noty: cannot open db at \(dbURL.path)")
+            failure = PersistenceError.database(String(cString: sqlite3_errmsg(db)))
+            return
         }
         exec("PRAGMA journal_mode=WAL;")
         exec("PRAGMA synchronous=NORMAL;")
@@ -32,6 +36,13 @@ final class Store {
         """)
         exec("CREATE INDEX IF NOT EXISTS idx_notes_archived ON notes(archived, sort_order);")
         migrate()
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, "SELECT 1 FROM notes LIMIT 1", -1, &statement, nil) == SQLITE_OK {
+            let result = sqlite3_step(statement)
+            cipher = Crypto(keyURL: keyURL, allowCreation: result == SQLITE_DONE)
+            if result != SQLITE_ROW && result != SQLITE_DONE { failure = databaseError() }
+        } else { failure = databaseError() }
+        sqlite3_finalize(statement)
     }
 
     /// Adds columns introduced after a database was first created. Checked rather
@@ -60,27 +71,42 @@ final class Store {
     private func exec(_ sql: String) {
         var err: UnsafeMutablePointer<CChar>?
         if sqlite3_exec(db, sql, nil, nil, &err) != SQLITE_OK, let err {
-            NSLog("Noty sql: \(String(cString: err))")
+            failure = PersistenceError.database(String(cString: err))
             sqlite3_free(err)
         }
     }
 
     // MARK: Reads
 
-    func load() -> [Note] {
+    private func databaseError() -> Error {
+        PersistenceError.database(String(cString: sqlite3_errmsg(db)))
+    }
+
+    func load() throws -> [Note] {
+        if let failure { throw failure }
+        do { return try readNotes() }
+        catch {
+            // A partial or undecryptable database must never become editable.
+            failure = error
+            throw error
+        }
+    }
+
+    private func readNotes() throws -> [Note] {
         var out: [Note] = []
         var st: OpaquePointer?
         let sql = "SELECT id,title,body,color,created,modified,archived,sort_order,pinned,text_direction FROM notes ORDER BY sort_order ASC;"
-        guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { return out }
+        guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { throw databaseError() }
         defer { sqlite3_finalize(st) }
-        while sqlite3_step(st) == SQLITE_ROW {
+        var result = sqlite3_step(st)
+        while result == SQLITE_ROW {
             var n = Note()
             n.id = String(cString: sqlite3_column_text(st, 0))
             n.title = sqlite3_column_text(st, 1).map { String(cString: $0) } ?? ""
             if let blob = sqlite3_column_blob(st, 2) {
                 let len = Int(sqlite3_column_bytes(st, 2))
-                n.body = Crypto.open(Data(bytes: blob, count: len))
-            }
+                n.body = try cipher.open(Data(bytes: blob, count: len))
+            } else { throw PersistenceError.corruptBody }
             n.color = Int(sqlite3_column_int(st, 3))
             n.created = Date(timeIntervalSince1970: sqlite3_column_double(st, 4))
             n.modified = Date(timeIntervalSince1970: sqlite3_column_double(st, 5))
@@ -90,13 +116,17 @@ final class Store {
             let rawDirection = sqlite3_column_text(st, 9).map { String(cString: $0) }
             n.textDirection = rawDirection.flatMap(NoteTextDirection.init(rawValue:)) ?? .automatic
             out.append(n)
+            result = sqlite3_step(st)
         }
+        guard result == SQLITE_DONE else { throw databaseError() }
         return out
     }
 
     // MARK: Writes
 
-    func upsert(_ n: Note) {
+    func upsert(_ n: Note) throws {
+        if let failure { throw failure }
+        guard NoteColor.all.indices.contains(n.color) else { throw PersistenceError.invalidColor }
         let sql = """
         INSERT INTO notes (id,title,body,color,created,modified,archived,sort_order,pinned,text_direction)
         VALUES (?,?,?,?,?,?,?,?,?,?)
@@ -107,9 +137,9 @@ final class Store {
           text_direction=excluded.text_direction;
         """
         var st: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { return }
+        guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { throw databaseError() }
         defer { sqlite3_finalize(st) }
-        let sealed = Crypto.seal(n.body)
+        let sealed = try cipher.seal(n.body)
         sqlite3_bind_text(st, 1, n.id, -1, SQLITE_TRANSIENT)
         sqlite3_bind_text(st, 2, n.title, -1, SQLITE_TRANSIENT)
         _ = sealed.withUnsafeBytes { raw in
@@ -123,15 +153,16 @@ final class Store {
         sqlite3_bind_int(st, 9, n.pinned ? 1 : 0)
         sqlite3_bind_text(st, 10, n.textDirection.rawValue, -1, SQLITE_TRANSIENT)
         if sqlite3_step(st) != SQLITE_DONE {
-            NSLog("Noty: upsert failed — \(String(cString: sqlite3_errmsg(db)))")
+            throw databaseError()
         }
     }
 
-    func delete(id: String) {
+    func delete(id: String) throws {
+        if let failure { throw failure }
         var st: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "DELETE FROM notes WHERE id=?;", -1, &st, nil) == SQLITE_OK else { return }
+        guard sqlite3_prepare_v2(db, "DELETE FROM notes WHERE id=?;", -1, &st, nil) == SQLITE_OK else { throw databaseError() }
         defer { sqlite3_finalize(st) }
         sqlite3_bind_text(st, 1, id, -1, SQLITE_TRANSIENT)
-        sqlite3_step(st)
+        guard sqlite3_step(st) == SQLITE_DONE else { throw databaseError() }
     }
 }

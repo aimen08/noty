@@ -106,6 +106,7 @@
 "menu.export" = "导出";
 "menu.hide" = "隐藏 Noty";
 "menu.import" = "导入…";
+"menu.insert_image" = "插入图片…";
 "menu.keep_deck_open" = "保持便笺栏展开";
 "menu.launch_at_login" = "登录时启动";
 "menu.new_note" = "新建便笺";
@@ -146,6 +147,8 @@
 "settings.deck.hide_pill_help" = "空闲时不显示任何内容——没有胶囊，也没有色条。将指针移到屏幕边缘即可唤出标签。";
 "settings.deck.keep_open" = "保持便笺栏展开";
 "settings.deck.keep_open_help" = "指针移开后，标签及其文字仍显示在边缘，不会折叠成胶囊。";
+"settings.deck.hide_actions" = "隐藏新建便笺和设置按钮";
+"settings.deck.hide_actions_help" = "展开的便笺栏中不再显示 + 和齿轮按钮。菜单栏图标和快捷键仍可新建便笺、打开设置。";
 "settings.deck.language" = "语言";
 "settings.deck.language_help" = "更改语言后，Noty 会自动重新启动。";
 "settings.deck.size" = "大小";
@@ -168,6 +171,19 @@
 "settings.shortcuts.in_note" = "在打开的便笺中";
 "settings.shortcuts.tab" = "快捷键";
 
+"settings.sync.caption" = "将便签镜像到 iCloud 云盘，以便在 iPhone 和 iPad 上阅读与编辑。";
+"settings.sync.enable" = "通过 iCloud 云盘同步便签";
+"settings.sync.enable_help" = "同步的便签会以纯文本 Markdown 文件写入 iCloud 云盘，它们将离开加密数据库——任何能访问你 iCloud 账户的人都能读取。无论是否开启，这台 Mac 上的数据库始终保持加密。";
+"settings.sync.folder" = "文件夹";
+"settings.sync.reveal" = "在访达中显示";
+"settings.sync.status" = "状态";
+"settings.sync.status_last" = "上次同步于 %@";
+"settings.sync.status_never" = "等待首次同步";
+"settings.sync.status_off" = "已关闭";
+"settings.sync.status_unavailable" = "iCloud 云盘不可用";
+"settings.sync.sync_now" = "立即同步";
+"settings.sync.tab" = "同步";
+"settings.sync.unavailable_help" = "请在“系统设置”中登录 iCloud 并开启 iCloud 云盘。";
 "settings.updates.automatic" = "自动检查更新";
 "settings.updates.caption" = "Noty 会获取一个文件，用于检查是否有新版本。";
 "settings.updates.check_now" = "现在检查";
@@ -208,3 +224,13 @@
 "width.standard" = "标准";
 "width.very_wide" = "特宽";
 "width.wide" = "宽";
+
+/* Storage recovery */
+"storage.invalid_key" = "加密密钥无效，未替换原密钥。";
+"storage.missing_key" = "现有便笺的加密密钥丢失。请恢复原始 note.key 文件后重新打开 Noty。";
+"storage.corrupt_body" = "无法解密便笺。已禁用编辑以保护原始数据。";
+"storage.invalid_color" = "导入的便笺包含无效的颜色值。";
+"storage.error_title" = "Noty 无法读取或保存便笺";
+"storage.error_help" = "原始数据已保留。未保存的编辑仍保留在本次会话中。请解决存储问题后重试；Noty 会在退出前重新尝试保存。";
+"storage.import_unsaved" = "部分导入的便笺无法保存。";
+"import.invalid_archive" = "此归档无效或使用了不受支持的版本。";

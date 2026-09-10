@@ -201,8 +201,12 @@ private struct FloatingNoteView: View {
 
     @ObservedObject private var store = NoteStore.shared
     @StateObject private var bridge = EditorBridge()
-    @State private var text = ""
-    @State private var saveWork: DispatchWorkItem?
+    private var textBinding: Binding<String> {
+        Binding(get: { store.note(id: noteID)?.body ?? "" }, set: {
+            onActivity()
+            store.updateBody(id: noteID, body: $0)
+        })
+    }
 
     private var note: Note? { store.note(id: noteID) }
 
@@ -211,7 +215,7 @@ private struct FloatingNoteView: View {
             let pal = note.palette
             VStack(spacing: 0) {
                 header(note, pal)
-                NoteTextView(text: $text, ink: NSColor(pal.ink),
+                NoteTextView(text: textBinding, ink: NSColor(pal.ink),
                              bridge: bridge, autofocus: false,
                              fontSize: Settings.noteFontSize,
                              markdownEnabled: Settings.markdownStyling,
@@ -229,11 +233,6 @@ private struct FloatingNoteView: View {
                     .strokeBorder(pal.ink.opacity(0.14), lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .onAppear { text = note.body }
-            .onChange(of: text) { _, value in
-                onActivity()
-                scheduleSave(value)
-            }
             .onDisappear { flush() }
         }
     }
@@ -277,19 +276,5 @@ private struct FloatingNoteView: View {
         .gesture(WindowDragGesture())
     }
 
-    private func scheduleSave(_ value: String) {
-        saveWork?.cancel()
-        let work = DispatchWorkItem {
-            NoteStore.shared.updateBody(id: noteID, body: value)
-        }
-        saveWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
-    }
-
-    private func flush() {
-        saveWork?.cancel()
-        if !text.isEmpty || note?.body.isEmpty == false {
-            NoteStore.shared.updateBody(id: noteID, body: text)
-        }
-    }
+    private func flush() { store.flush(id: noteID) }
 }

@@ -100,6 +100,7 @@ enum EditorStyleEngine {
     static func apply(to textView: NSTextView,
                       ranges: [NSRange],
                       revealing activeLine: NSRange?,
+                      forceRevealImageID: String? = nil,
                       ink: NSColor,
                       size: CGFloat,
                       markdownEnabled: Bool,
@@ -136,7 +137,8 @@ enum EditorStyleEngine {
             let fragment = storage.mutableString.substring(with: range)
             if markdownEnabled {
                 markdown(storage, fragment, offset: range.location, ink: ink,
-                         size: size, revealing: activeLine, bodyFont: bodyFont)
+                         size: size, revealing: activeLine,
+                         forceRevealImageID: forceRevealImageID, bodyFont: bodyFont)
             }
             styleCompletedTasks(storage, fragment, offset: range.location,
                                 ink: ink, isCompletedTask: isCompletedTask)
@@ -187,6 +189,7 @@ enum EditorStyleEngine {
     private static func markdown(_ storage: NSTextStorage, _ fragment: String,
                                  offset: Int, ink: NSColor, size: CGFloat,
                                  revealing activeLine: NSRange?,
+                                 forceRevealImageID: String?,
                                  bodyFont: @escaping FontProvider) {
         let local = fragment as NSString
         let full = NSRange(location: 0, length: local.length)
@@ -219,6 +222,22 @@ enum EditorStyleEngine {
             }
         }
 
+        // Image tokens NEVER reveal on the caret line — a note should read as
+        // a note, not as markup. They hide whole and are drawn as overlays by
+        // NoteImages; the one exception is the delete-confirmation reveal
+        // TaskTextView drives via forceRevealImageID. Styled first because
+        // `![image](noty-img://…)` also matches the link pattern below.
+        let imageTokens = ImageStore.tokens(in: fragment)
+        for token in imageTokens {
+            let range = global(token.range)
+            if token.id == forceRevealImageID {
+                storage.addAttribute(.foregroundColor, value: faint, range: range)
+            } else {
+                storage.addAttribute(.notyHidden, value: true, range: range)
+                storage.addAttribute(.foregroundColor, value: faint, range: range)
+            }
+        }
+
         each(heading) { match in
             let level = match.range(at: 1).length
             let bump = max(1.5, 7 - CGFloat(level) * 1.1)
@@ -229,6 +248,10 @@ enum EditorStyleEngine {
         // [label](url) — the label is what stays; the brackets and the URL go the
         // way of every other marker.
         each(link) { match in
+            // Image tokens were claimed above; the link pattern matches them too.
+            guard !imageTokens.contains(where: {
+                NSIntersectionRange($0.range, match.range).length > 0
+            }) else { return }
             let label = match.range(at: 1)
             storage.addAttribute(.underlineStyle,
                                  value: NSUnderlineStyle.single.rawValue, range: global(label))

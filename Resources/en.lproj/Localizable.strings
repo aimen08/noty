@@ -106,6 +106,7 @@
 "menu.export" = "Export";
 "menu.hide" = "Hide Noty";
 "menu.import" = "Import…";
+"menu.insert_image" = "Insert Image…";
 "menu.keep_deck_open" = "Keep deck open";
 "menu.launch_at_login" = "Launch at login";
 "menu.new_note" = "New Note";
@@ -146,6 +147,8 @@
 "settings.deck.hide_pill_help" = "Nothing shows at rest — no pill, no dashes. Slide the pointer to the screen edge to wake the tabs.";
 "settings.deck.keep_open" = "Keep the deck open";
 "settings.deck.keep_open_help" = "Tabs stay on the edge with their labels showing, instead of folding back into the pill when the pointer leaves.";
+"settings.deck.hide_actions" = "Hide the new-note and settings buttons";
+"settings.deck.hide_actions_help" = "The + and gear buttons leave the open deck. The menu bar icon and shortcuts still create notes and open Settings.";
 "settings.deck.language" = "Language";
 "settings.deck.language_help" = "Noty restarts automatically when you change the language.";
 "settings.deck.size" = "Size";
@@ -168,6 +171,19 @@
 "settings.shortcuts.in_note" = "In an open note";
 "settings.shortcuts.tab" = "Shortcuts";
 
+"settings.sync.caption" = "Mirror your notes into iCloud Drive so they can be read and edited on iPhone and iPad.";
+"settings.sync.enable" = "Sync notes through iCloud Drive";
+"settings.sync.enable_help" = "Synced notes are written to iCloud Drive as plain Markdown files. They leave the encrypted database — anyone who can reach your iCloud account can read them. The database on this Mac stays encrypted either way.";
+"settings.sync.folder" = "Folder";
+"settings.sync.reveal" = "Show in Finder";
+"settings.sync.status" = "Status";
+"settings.sync.status_last" = "Last synced %@";
+"settings.sync.status_never" = "Waiting for the first sync";
+"settings.sync.status_off" = "Off";
+"settings.sync.status_unavailable" = "iCloud Drive is not available";
+"settings.sync.sync_now" = "Sync Now";
+"settings.sync.tab" = "Sync";
+"settings.sync.unavailable_help" = "Sign in to iCloud and turn on iCloud Drive in System Settings.";
 "settings.updates.automatic" = "Check for updates automatically";
 "settings.updates.caption" = "Noty fetches one file to see whether a newer version exists.";
 "settings.updates.check_now" = "Check Now";
@@ -208,3 +224,13 @@
 "width.standard" = "Standard";
 "width.very_wide" = "Very wide";
 "width.wide" = "Wide";
+
+/* Storage recovery */
+"storage.invalid_key" = "The encryption key is invalid. It has not been replaced.";
+"storage.missing_key" = "The encryption key for your existing notes is missing. Restore the original note.key file before reopening Noty.";
+"storage.corrupt_body" = "A note could not be decrypted. Editing is disabled to protect the original data.";
+"storage.invalid_color" = "The imported note has an invalid colour value.";
+"storage.error_title" = "Noty could not read or save your notes";
+"storage.error_help" = "Your original data has been kept. Unsaved edits remain in this session. Resolve the storage problem and try again; Noty will retry saving before quitting.";
+"storage.import_unsaved" = "Some imported notes could not be saved.";
+"import.invalid_archive" = "This archive is invalid or uses an unsupported version.";

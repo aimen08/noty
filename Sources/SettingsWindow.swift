@@ -108,6 +108,7 @@ final class SettingsModel: ObservableObject {
     @Published var deckStyle: DeckStyle { didSet { Settings.deckStyle = deckStyle; apply() } }
     @Published var alwaysShown: Bool    { didSet { Settings.deckAlwaysShown = alwaysShown; apply() } }
     @Published var pillHidden: Bool     { didSet { Settings.deckPillHidden = pillHidden; apply() } }
+    @Published var hideActions: Bool    { didSet { Settings.deckHideActions = hideActions; apply() } }
     @Published var deckScale: Double    { didSet { Settings.deckScale = deckScale; apply() } }
     @Published var onLeftEdge: Bool     { didSet { Settings.deckOnLeftEdge = onLeftEdge; apply() } }
     @Published var displayTarget: String { didSet { Settings.displayTarget = displayTarget; apply() } }
@@ -127,6 +128,16 @@ final class SettingsModel: ObservableObject {
     @Published var noteSizeIndex: Int   { didSet { Settings.noteSizeIndex = noteSizeIndex; apply() } }
     @Published var openOnHover: Bool    { didSet { Settings.openOnHover = openOnHover; apply() } }
     @Published var tabPreview: Bool     { didSet { Settings.tabPreview = tabPreview; apply() } }
+
+    @Published var cloudSync: Bool {
+        didSet {
+            guard !loading, cloudSync != oldValue else { return }
+            Settings.cloudSyncEnabled = cloudSync
+            CloudSync.shared.reload()
+            refreshSyncStatus()
+        }
+    }
+    @Published var syncStatus: String = ""
 
     @Published var scNewNote: Shortcut  { didSet { Settings.scNewNote = scNewNote; HotKeys.shared.reload() } }
     @Published var scAllNotes: Shortcut { didSet { Settings.scAllNotes = scAllNotes; HotKeys.shared.reload() } }
@@ -153,6 +164,7 @@ final class SettingsModel: ObservableObject {
         deckStyle = Settings.deckStyle
         alwaysShown = Settings.deckAlwaysShown
         pillHidden = Settings.deckPillHidden
+        hideActions = Settings.deckHideActions
         deckScale = Settings.deckScale
         onLeftEdge = Settings.deckOnLeftEdge
         displayTarget = Settings.displayTarget
@@ -167,6 +179,7 @@ final class SettingsModel: ObservableObject {
         noteSizeIndex = Settings.noteSizeIndex
         openOnHover = Settings.openOnHover
         tabPreview = Settings.tabPreview
+        cloudSync = Settings.cloudSyncEnabled
         scNewNote = Settings.scNewNote
         scAllNotes = Settings.scAllNotes
         scArchive = Settings.scArchive
@@ -182,6 +195,7 @@ final class SettingsModel: ObservableObject {
         scSmaller = Settings.scSmaller
         loading = false
         refreshUpdateStatus()
+        refreshSyncStatus()
 
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -218,6 +232,32 @@ final class SettingsModel: ObservableObject {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
         updateStatus = L10n.format("updates.last_checked", f.localizedString(for: last, relativeTo: Date()))
+    }
+
+    func refreshSyncStatus() {
+        guard Settings.cloudSyncEnabled else {
+            syncStatus = L10n.text("settings.sync.status_off")
+            return
+        }
+        guard CloudFolder.isAvailable else {
+            syncStatus = L10n.text("settings.sync.status_unavailable")
+            return
+        }
+        guard let last = CloudSync.shared.lastSync else {
+            syncStatus = L10n.text("settings.sync.status_never")
+            return
+        }
+        syncStatus = L10n.format("settings.sync.status_last", Fmt.ago(last))
+    }
+
+    func syncNow() {
+        CloudSync.shared.syncNow()
+        refreshSyncStatus()
+    }
+
+    func revealSyncFolder() {
+        CloudFolder.ensureFolder()
+        NSWorkspace.shared.activateFileViewerSelecting([CloudFolder.url])
     }
 
     func checkForUpdatesNow() {
@@ -295,6 +335,8 @@ struct SettingsView: View {
                 .tabItem { Label(L10n.text("settings.deck.tab"), systemImage: "menucard") }
             pane(L10n.text("settings.notes.caption")) { notesTab }
                 .tabItem { Label(L10n.text("settings.notes.tab"), systemImage: "textformat") }
+            pane(L10n.text("settings.sync.caption")) { syncTab }
+                .tabItem { Label(L10n.text("settings.sync.tab"), systemImage: "icloud") }
             pane(L10n.text("settings.updates.caption")) { updatesTab }
                 .tabItem { Label(L10n.text("settings.updates.tab"), systemImage: "arrow.triangle.2.circlepath") }
         }
@@ -404,6 +446,16 @@ struct SettingsView: View {
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        // Only meaningful while the deck is kept open — hidden otherwise
+        // rather than sitting there doing nothing.
+        if model.alwaysShown {
+            VStack(alignment: .leading, spacing: 3) {
+                Toggle(L10n.text("settings.deck.hide_actions"), isOn: $model.hideActions)
+                Text(L10n.text("settings.deck.hide_actions_help"))
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
                     VStack(alignment: .leading, spacing: 3) {
                         Toggle(L10n.text("settings.deck.hide_pill"), isOn: $model.pillHidden)
                         Text(L10n.text("settings.deck.hide_pill_help"))
@@ -466,6 +518,43 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
+    private var syncTab: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Toggle(L10n.text("settings.sync.enable"), isOn: $model.cloudSync)
+                .disabled(!CloudFolder.isAvailable)
+            // The one place a person is told that switching this on takes their
+            // notes out of the encrypted database. It does not get to be subtle.
+            Text(L10n.text("settings.sync.enable_help"))
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if !CloudFolder.isAvailable {
+                Text(L10n.text("settings.sync.unavailable_help"))
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        row(L10n.text("settings.sync.status")) {
+            HStack(spacing: 10) {
+                Text(model.syncStatus)
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                Button(L10n.text("settings.sync.sync_now")) { model.syncNow() }
+                    .disabled(!model.cloudSync || !CloudFolder.isAvailable)
+            }
+        }
+        row(L10n.text("settings.sync.folder")) {
+            HStack(spacing: 10) {
+                Text(CloudFolder.url.path)
+                    .font(.system(size: 11).monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.head)
+                Button(L10n.text("settings.sync.reveal")) { model.revealSyncFolder() }
+                    .disabled(!CloudFolder.isAvailable)
+            }
+        }
+        Spacer(minLength: 0)
+    }
+
+    @ViewBuilder
     private var updatesTab: some View {
         row(L10n.text("settings.updates.this_copy")) {
             Text(Self.versionString)
@@ -516,7 +605,10 @@ struct SettingsView: View {
             .padding(.horizontal, 22)
             .padding(.vertical, 18)
         }
-        .onAppear { model.refreshUpdateStatus() }
+        .onAppear {
+            model.refreshUpdateStatus()
+            model.refreshSyncStatus()
+        }
     }
 
     private func subhead(_ text: String) -> some View {

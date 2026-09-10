@@ -258,10 +258,15 @@ struct LibraryDetail: View {
     let note: Note
     let bridge: EditorBridge
 
-    @State private var text = ""
-    @State private var title = ""
-    @State private var saveWork: DispatchWorkItem?
-    @State private var titleSaveWork: DispatchWorkItem?
+    @ObservedObject private var store = NoteStore.shared
+    private var text: String { store.note(id: note.id)?.body ?? "" }
+    private var title: String { store.note(id: note.id)?.title ?? "" }
+    private var textBinding: Binding<String> {
+        Binding(get: { text }, set: { store.updateBody(id: note.id, body: $0) })
+    }
+    private var titleBinding: Binding<String> {
+        Binding(get: { title }, set: { store.updateTitle(id: note.id, title: $0) })
+    }
 
     private var pal: NoteColor { note.palette }
 
@@ -289,7 +294,7 @@ struct LibraryDetail: View {
                             .lineLimit(1)
                             .allowsHitTesting(false)
                     }
-                    TextField("", text: $title)
+                    TextField("", text: titleBinding)
                         .textFieldStyle(.plain)
                         .lineLimit(1)
                 }
@@ -297,14 +302,14 @@ struct LibraryDetail: View {
                 .contextMenu {
                     if note.hasCustomTitle {
                         Button(L10n.text("note.title_reset")) {
-                            title = ""
                             NoteStore.shared.updateTitle(id: note.id, title: "")
                         }
                     }
                 }
 
                 Spacer()
-                Text(L10n.format("note.edited", Fmt.ago(note.modified)))
+                Text(store.unsavedIDs.contains(note.id) ? L10n.text("note.not_saved")
+                     : L10n.format("note.edited", Fmt.ago(note.modified)))
                     .font(.system(size: 10.5)).foregroundStyle(.secondary)
 
                 NoteTextDirectionMenu(direction: note.textDirection,
@@ -331,38 +336,13 @@ struct LibraryDetail: View {
             .padding(.bottom, 10)
             .background(pal.dash.opacity(0.12))
 
-            NoteTextView(text: $text, ink: NSColor(pal.ink), bridge: bridge,
+            NoteTextView(text: textBinding, ink: NSColor(pal.ink), bridge: bridge,
                          autofocus: false, fontSize: Settings.noteFontSize,
                          markdownEnabled: Settings.markdownStyling,
                          textDirection: note.textDirection,
                          styleToken: "\(note.color)|\(Settings.noteFontSize)|\(Settings.noteFontName)|\(Settings.markdownStyling)")
                 .background(pal.paper)
         }
-        .onAppear {
-            text = note.body
-            title = note.title
-        }
-        .onChange(of: note.id) { _, _ in
-            text = note.body
-            title = note.title
-        }
-        .onChange(of: text) { _, v in
-            saveWork?.cancel()
-            let w = DispatchWorkItem { NoteStore.shared.updateBody(id: note.id, body: v) }
-            saveWork = w
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: w)
-        }
-        .onChange(of: title) { _, v in
-            titleSaveWork?.cancel()
-            let w = DispatchWorkItem { NoteStore.shared.updateTitle(id: note.id, title: v) }
-            titleSaveWork = w
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: w)
-        }
-        .onDisappear {
-            saveWork?.cancel()
-            titleSaveWork?.cancel()
-            NoteStore.shared.updateBody(id: note.id, body: text)
-            NoteStore.shared.updateTitle(id: note.id, title: title)
-        }
+        .onDisappear { store.flush(id: note.id) }
     }
 }

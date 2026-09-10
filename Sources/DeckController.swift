@@ -37,6 +37,7 @@ final class DeckModel: ObservableObject {
     // Mirrored from Settings so SwiftUI re-renders when a preference flips.
     @Published var style: DeckStyle = Settings.deckStyle
     @Published var alwaysShown: Bool = Settings.deckAlwaysShown
+    @Published var hideActions: Bool = Settings.deckHideActions
     @Published var pillHidden: Bool = Settings.deckPillHidden
     /// DeckGeom reads the scale straight from Settings; this mirror exists purely
     /// so a change to it invalidates the views that measure against it.
@@ -65,6 +66,7 @@ final class DeckModel: ObservableObject {
     func syncPreferences() {
         style = Settings.deckStyle
         alwaysShown = Settings.deckAlwaysShown
+        hideActions = Settings.deckHideActions
         pillHidden = Settings.deckPillHidden
         scale = Settings.deckScale
         onLeftEdge = Settings.deckOnLeftEdge

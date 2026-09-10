@@ -19,6 +19,9 @@ jobs:
       - name: Fetch Sparkle
         run: ./scripts/fetch-sparkle.sh
 
+      - name: Regression tests
+        run: ./scripts/test-editor.sh
+
       - name: Build
         run: ./build.sh release
 
