@@ -83,6 +83,67 @@ enum ImageStore {
         }
     }
 
+    // MARK: - Cropping
+
+    /// Crops the image to a target aspect ratio (width / height) by centering the crop box,
+    /// saving it as a new image file and returning the new id.
+    static func crop(id: String, aspectRatio: CGFloat) -> String? {
+        guard aspectRatio > 0, let original = image(id: id) else { return nil }
+        let size = original.size
+        guard size.width > 0, size.height > 0 else { return nil }
+        let currentRatio = size.width / size.height
+        let cropWidth: CGFloat
+        let cropHeight: CGFloat
+        if currentRatio > aspectRatio {
+            cropHeight = size.height
+            cropWidth = floor(size.height * aspectRatio)
+        } else {
+            cropWidth = size.width
+            cropHeight = floor(size.width / aspectRatio)
+        }
+        let originX = floor((size.width - cropWidth) / 2)
+        let originY = floor((size.height - cropHeight) / 2)
+        let cropRect = NSRect(x: originX, y: originY, width: cropWidth, height: cropHeight)
+
+        let targetSize = NSSize(width: cropWidth, height: cropHeight)
+        let cropped = NSImage(size: targetSize)
+        cropped.lockFocus()
+        original.draw(in: NSRect(origin: .zero, size: targetSize),
+                      from: cropRect,
+                      operation: .copy, fraction: 1.0)
+        cropped.unlockFocus()
+        return save(image: cropped)
+    }
+
+    /// Crops a normalized sub-rect (x, y, width, height in 0...1 range, with origin at top-left)
+    /// from the image, saving it as a new image file and returning the new id.
+    static func crop(id: String, normalizedRect: NSRect) -> String? {
+        guard let sourceImage = image(id: id) else { return nil }
+        let size = sourceImage.size
+        guard size.width > 0, size.height > 0 else { return nil }
+
+        let normX = max(0, min(1, normalizedRect.minX))
+        let normY = max(0, min(1, normalizedRect.minY))
+        let normW = max(0.01, min(1 - normX, normalizedRect.width))
+        let normH = max(0.01, min(1 - normY, normalizedRect.height))
+
+        let pixelX = floor(normX * size.width)
+        let pixelW = max(1, floor(normW * size.width))
+        let pixelH = max(1, floor(normH * size.height))
+        let pixelY = floor(size.height - (normY * size.height + pixelH))
+
+        let cropRect = NSRect(x: pixelX, y: pixelY, width: pixelW, height: pixelH)
+        let targetSize = NSSize(width: pixelW, height: pixelH)
+        let cropped = NSImage(size: targetSize)
+        cropped.lockFocus()
+        sourceImage.draw(in: NSRect(origin: .zero, size: targetSize),
+                         from: cropRect,
+                         operation: .copy, fraction: 1.0)
+        cropped.unlockFocus()
+        return save(image: cropped)
+    }
+
+
     // MARK: - Tokens
 
     /// The full markdown token line (no trailing newline). Integral widths are

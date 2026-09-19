@@ -1,9 +1,8 @@
 import AppKit
 
 /// Checks for the image-token interaction model: tokens stay hidden no matter
-/// where the caret is, arrow keys cross a token like one character, delete
-/// reveals the markup for confirmation, and typing/Return cancels that reveal
-/// instead of destroying the token.
+/// where the caret is, arrow keys cross a token like one character, and delete
+/// removes the whole image in one undoable step.
 enum ImageInteractionTests {
 
     private static let tokenID = "ABC12345-1111-2222-3333-444455556666"
@@ -11,11 +10,16 @@ enum ImageInteractionTests {
 
     static func run(_ check: (Bool, String) -> Void) {
         tokenStaysHiddenOnCaretLine(check)
-        forceRevealShowsToken(check)
         tokenLineReservesImageSize(check)
         arrowKeysSnapAcrossToken(check)
-        deleteRevealsThenSecondDeleteRemoves(check)
-        typingCancelsRevealWithoutTouchingToken(check)
+        deleteRemovesWholeToken(check)
+        inlineTokenDeleteKeepsLineBreaks(check)
+        forwardDeleteRemovesWholeToken(check)
+        deleteIsOneUndoStep(check)
+        cropImageProducesValidAspectImage(check)
+        cropWithNormalizedRectProducesExactSubimage(check)
+        overlayHitTestConvertsSuperviewPoint(check)
+        cropModeRoutesEnterAndEscape(check)
         titlesAndPreviewsStripTokens(check)
     }
 
@@ -33,12 +37,10 @@ enum ImageInteractionTests {
     }
 
     @discardableResult
-    private static func style(_ tv: NSTextView, revealing: NSRange? = nil,
-                              forceRevealImageID: String? = nil) -> [NSRange] {
+    private static func style(_ tv: NSTextView, revealing: NSRange? = nil) -> [NSRange] {
         EditorStyleEngine.apply(to: tv,
                                 ranges: [NSRange(location: 0, length: tv.textStorage?.length ?? 0)],
                                 revealing: revealing,
-                                forceRevealImageID: forceRevealImageID,
                                 ink: .textColor,
                                 size: 13.5,
                                 markdownEnabled: true,
@@ -59,16 +61,6 @@ enum ImageInteractionTests {
         let tokenLine = (text as NSString).lineRange(for: NSRange(location: 0, length: 0))
         style(tv, revealing: tokenLine)
         check(isHidden(tv, at: 0), "image token stays hidden when the caret is on its line")
-    }
-
-    /// The delete-confirmation path reveals exactly one token by id.
-    private static func forceRevealShowsToken(_ check: (Bool, String) -> Void) {
-        let text = token + "\n"
-        let tv = makeView(text)
-        style(tv, forceRevealImageID: tokenID)
-        check(!isHidden(tv, at: 0), "force-revealed token is visible")
-        style(tv)
-        check(isHidden(tv, at: 0), "token hides again once the reveal id is gone")
     }
 
     /// The token's line fragment reserves the image's height AND width, so the
@@ -112,43 +104,171 @@ enum ImageInteractionTests {
               "right from before the image lands after it, got \(tv.selectedRange().location)")
     }
 
-    /// First delete reveals (selects) the token; second delete removes it.
-    private static func deleteRevealsThenSecondDeleteRemoves(_ check: (Bool, String) -> Void) {
+    /// One backspace at the image deletes the whole token and its line break —
+    /// no reveal step, no empty line left behind.
+    private static func deleteRemovesWholeToken(_ check: (Bool, String) -> Void) {
         let text = token + "\n"
         let tv = makeView(text)
         style(tv)
-        let tokenRange = ImageStore.tokens(in: text).first!.range
         tv.layoutManager?.ensureLayout(for: tv.textContainer!)
 
+        // Caret on the line below the image.
         tv.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
         tv.deleteBackward(nil)
-        check(tv.string == text, "first delete leaves the text untouched")
-        check(tv.selectedRange() == tokenRange, "first delete selects the whole token")
-        check(tv.revealedImageID == tokenID, "first delete records the revealed id")
+        check(tv.string.isEmpty, "delete below the image removes token and line break, got \(tv.string.debugDescription)")
 
-        tv.deleteBackward(nil)
-        check(tv.string == "\n", "second delete removes the token, got \(tv.string.debugDescription)")
+        // Caret at the image's right edge, with text on both sides.
+        let surrounded = "before\n" + token + "\nafter"
+        let tv2 = makeView(surrounded)
+        style(tv2)
+        tv2.layoutManager?.ensureLayout(for: tv2.textContainer!)
+        let tokenRange = ImageStore.tokens(in: surrounded).first!.range
+        tv2.setSelectedRange(NSRange(location: NSMaxRange(tokenRange), length: 0))
+        tv2.deleteBackward(nil)
+        check(tv2.string == "before\nafter",
+              "delete at the image edge lifts the whole line out, got \(tv2.string.debugDescription)")
     }
 
-    /// Typing (or Return/paste, same guard) while the token sits revealed
-    /// cancels the reveal and keeps the markup intact.
-    private static func typingCancelsRevealWithoutTouchingToken(_ check: (Bool, String) -> Void) {
+    /// An inline token (text around it on the same line) deletes cleanly
+    /// without touching the line's own break.
+    private static func inlineTokenDeleteKeepsLineBreaks(_ check: (Bool, String) -> Void) {
+        let text = "before " + token + " after\nnext"
+        let tv = makeView(text)
+        style(tv)
+        tv.layoutManager?.ensureLayout(for: tv.textContainer!)
+
+        let tokenRange = ImageStore.tokens(in: text).first!.range
+        tv.setSelectedRange(NSRange(location: NSMaxRange(tokenRange), length: 0))
+        tv.deleteBackward(nil)
+        check(tv.string == "before  after\nnext",
+              "inline token delete keeps the line break, got \(tv.string.debugDescription)")
+
+        // Inline token at end of line: the break below must survive too.
+        let endOfLine = "before " + token + "\nafter"
+        let tv2 = makeView(endOfLine)
+        style(tv2)
+        tv2.layoutManager?.ensureLayout(for: tv2.textContainer!)
+        let tokenRange2 = ImageStore.tokens(in: endOfLine).first!.range
+        tv2.setSelectedRange(NSRange(location: NSMaxRange(tokenRange2), length: 0))
+        tv2.deleteBackward(nil)
+        check(tv2.string == "before \nafter",
+              "end-of-line inline token keeps the newline, got \(tv2.string.debugDescription)")
+    }
+
+    /// Forward delete with the caret right before the image removes it whole.
+    private static func forwardDeleteRemovesWholeToken(_ check: (Bool, String) -> Void) {
         let text = token + "\n"
         let tv = makeView(text)
         style(tv)
         tv.layoutManager?.ensureLayout(for: tv.textContainer!)
 
+        tv.setSelectedRange(NSRange(location: 0, length: 0))
+        tv.deleteForward(nil)
+        check(tv.string.isEmpty, "forward delete removes the token, got \(tv.string.debugDescription)")
+    }
+
+    /// The deletion must come back with a single ⌘Z, as one undo group. A text
+    /// view only registers undo when a window supplies the undo manager, so
+    /// this test parks the view in a real (offscreen) window.
+    private static func deleteIsOneUndoStep(_ check: (Bool, String) -> Void) {
+        let text = token + "\n"
+        let tv = makeView(text)
+        tv.allowsUndo = true
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = tv
+        style(tv)
+        tv.layoutManager?.ensureLayout(for: tv.textContainer!)
+
         tv.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
         tv.deleteBackward(nil)
-        tv.insertText(" ")
-        check(tv.string == text, "typing during reveal does not replace the token")
-        check(tv.selectedRange().location == (text as NSString).length,
-              "cancel parks the caret below the image, got \(tv.selectedRange().location)")
+        check(tv.string.isEmpty, "token deleted before undo, got \(tv.string.debugDescription)")
+        tv.undoManager?.undo()
+        check(tv.string == text, "one undo restores the token, got \(tv.string.debugDescription)")
+    }
 
-        // Same guard on Return.
-        tv.deleteBackward(nil)
-        tv.insertNewline(nil)
-        check(tv.string == text, "Return during reveal does not replace the token")
+    private final class FlippedHost: NSView {
+        override var isFlipped: Bool { true }   // matches NSTextView
+    }
+
+    /// hitTest is handed points in the SUPERVIEW's coordinate system. An
+    /// overlay sitting away from the text origin must still answer hits —
+    /// comparing the raw point against local frames once made every image
+    /// below the first line unclickable.
+    private static func overlayHitTestConvertsSuperviewPoint(_ check: (Bool, String) -> Void) {
+        let host = FlippedHost(frame: NSRect(x: 0, y: 0, width: 500, height: 500))
+        let overlay = NoteImageOverlayView(imageID: "x", image: nil)
+        overlay.frame = NSRect(x: 20, y: 200, width: 200, height: 150)
+        host.addSubview(overlay)
+
+        overlay.setSelected(true)
+        overlay.layoutSubtreeIfNeeded()
+
+        // In the app the overlay's superview is the (flipped) text view, and
+        // hitTest arrives in its coordinates — y grows downward. Call the
+        // overlay's hitTest directly with exactly those coordinates: going
+        // through a root host would add a root-level y-up conversion that
+        // only exists in the test harness, not in the app.
+        let centre = overlay.hitTest(NSPoint(x: 120, y: 275))
+        check(centre === overlay, "overlay answers a hit at its centre, got \(String(describing: centre))")
+        let outside = overlay.hitTest(NSPoint(x: 10, y: 10))
+        check(outside === nil, "overlay ignores hits outside its bounds, got \(String(describing: outside))")
+        let gripArea = overlay.hitTest(NSPoint(x: 216, y: 346))  // just inside the br grip
+        check(gripArea != nil && gripArea !== overlay,
+              "selected overlay exposes its grips, got \(String(describing: gripArea))")
+        let barArea = overlay.hitTest(NSPoint(x: 120, y: 372))  // toolbar centre, container coords
+        check(barArea != nil && barArea !== overlay,
+              "selected overlay's toolbar is clickable, got \(String(describing: barArea))")
+    }
+
+    /// While cropping, the overlay is first responder: Enter commits the crop
+    /// and Esc cancels it, and both hand the keys back to the text view.
+    private static func cropModeRoutesEnterAndEscape(_ check: (Bool, String) -> Void) {
+        let sample = NSImage(size: NSSize(width: 100, height: 100))
+        sample.lockFocus()
+        NSColor.blue.setFill()
+        NSRect(x: 0, y: 0, width: 100, height: 100).fill()
+        sample.unlockFocus()
+        guard let id = ImageStore.save(image: sample) else {
+            check(false, "saving crop-routing test image succeeded")
+            return
+        }
+        defer { ImageStore.delete(ids: [id]) }
+
+        let tv = makeView(ImageStore.token(id: id, width: nil) + "\n")
+        let overlay = NoteImageOverlayView(imageID: id, image: ImageStore.image(id: id))
+        overlay.frame = NSRect(x: 0, y: 0, width: 200, height: 200)
+        tv.addSubview(overlay)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = tv
+        window.makeFirstResponder(tv)
+
+        var applied: NSRect? = nil
+        overlay.onApplyCrop = { applied = $0 }
+
+        overlay.startCropping()
+        check(window.firstResponder === overlay,
+              "cropping makes the overlay first responder, got \(String(describing: window.firstResponder))")
+        overlay.keyDown(with: Self.keyEvent(36, window: window))  // Enter commits
+        check(applied != nil, "Enter commits the crop")
+        check(!overlay.isCropping, "cropping mode ends after Enter")
+        check(window.firstResponder === tv, "commit hands first responder back to the text view")
+
+        overlay.startCropping()
+        overlay.keyDown(with: Self.keyEvent(53, window: window))  // Esc cancels
+        check(!overlay.isCropping, "Esc cancels the crop")
+        check(window.firstResponder === tv, "cancel hands first responder back to the text view")
+    }
+
+    private static func keyEvent(_ keyCode: UInt16, window: NSWindow) -> NSEvent {
+        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+                         timestamp: 0, windowNumber: window.windowNumber,
+                         context: nil, characters: "", charactersIgnoringModifiers: "",
+                         isARepeat: false, keyCode: keyCode)!
     }
 
     /// Titles and previews never show the raw path, even on mixed lines.
@@ -165,4 +285,63 @@ enum ImageInteractionTests {
         let note = Note(id: "t", title: "", body: mixed, color: 0)
         check(!note.preview.contains("noty-img"), "preview strips tokens, got \(note.preview)")
     }
+
+    /// Cropping an image to an aspect ratio produces a valid image with matching aspect ratio.
+    private static func cropImageProducesValidAspectImage(_ check: (Bool, String) -> Void) {
+        let sample = NSImage(size: NSSize(width: 200, height: 100))
+        sample.lockFocus()
+        NSColor.red.setFill()
+        NSRect(x: 0, y: 0, width: 200, height: 100).fill()
+        sample.unlockFocus()
+
+        guard let id = ImageStore.save(image: sample) else {
+            check(false, "saving test image succeeded")
+            return
+        }
+        defer { ImageStore.delete(ids: [id]) }
+
+        guard let croppedID = ImageStore.crop(id: id, aspectRatio: 1.0) else {
+            check(false, "cropping test image to 1:1 succeeded")
+            return
+        }
+        defer { ImageStore.delete(ids: [croppedID]) }
+
+        let croppedImage = ImageStore.image(id: croppedID)
+        check(croppedImage != nil, "cropped image is retrievable")
+        if let size = croppedImage?.size {
+            check(abs(size.width - size.height) < 1.0,
+                  "cropped 1:1 image has square dimensions, got \(size)")
+        }
+    }
+
+    /// Cropping with an explicit normalized rect extracts precisely the selected sub-rectangle.
+    private static func cropWithNormalizedRectProducesExactSubimage(_ check: (Bool, String) -> Void) {
+        let sample = NSImage(size: NSSize(width: 200, height: 100))
+        sample.lockFocus()
+        NSColor.yellow.setFill()
+        NSRect(x: 0, y: 0, width: 200, height: 100).fill()
+        sample.unlockFocus()
+
+        guard let id = ImageStore.save(image: sample) else {
+            check(false, "saving test image succeeded")
+            return
+        }
+        defer { ImageStore.delete(ids: [id]) }
+
+        // Select top-left quarter: x: 0..0.5, y: 0..0.5 in top-down coordinates
+        let normRect = NSRect(x: 0.0, y: 0.0, width: 0.5, height: 0.5)
+        guard let croppedID = ImageStore.crop(id: id, normalizedRect: normRect) else {
+            check(false, "crop with normalized rect succeeded")
+            return
+        }
+        defer { ImageStore.delete(ids: [croppedID]) }
+
+        guard let cropped = ImageStore.image(id: croppedID) else {
+            check(false, "cropped sub-image is retrievable")
+            return
+        }
+        check(abs(cropped.size.width - 100) < 1.0 && abs(cropped.size.height - 50) < 1.0,
+              "cropped sub-image has expected 100x50 dimensions, got \(cropped.size)")
+    }
 }
+
