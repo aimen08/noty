@@ -372,18 +372,23 @@ final class TaskTextView: NSTextView {
         super.deleteForward(sender)
     }
 
-    /// Deletes a hidden image token as one undoable edit, taking its line
-    /// break along so the note does not keep an empty line where the picture
-    /// was. Selecting the range and letting super delete keeps the removal
-    /// grouped as a single ⌘Z step.
+    /// Deletes a hidden image token as one undoable edit. When the token
+    /// occupies a whole line its line break goes along so the note does not
+    /// keep an empty line where the picture was; an inline token keeps the
+    /// surrounding line breaks untouched. Selecting the range and letting
+    /// super delete keeps the removal grouped as a single ⌘Z step.
     func deleteImageToken(_ token: (id: String, width: CGFloat?, range: NSRange)) {
         guard let storage = textStorage else { return }
         let ns = storage.string as NSString
         var range = token.range
-        if NSMaxRange(range) < ns.length, ns.character(at: NSMaxRange(range)) == 10 {
-            range.length += 1
-        } else if range.location > 0, ns.character(at: range.location - 1) == 10 {
-            range = NSRange(location: range.location - 1, length: range.length + 1)
+        let precededByBreak = range.location == 0 || ns.character(at: range.location - 1) == 10
+        let followedByBreak = NSMaxRange(range) == ns.length || ns.character(at: NSMaxRange(range)) == 10
+        if precededByBreak && followedByBreak {
+            if NSMaxRange(range) < ns.length {
+                range.length += 1
+            } else if range.location > 0 {
+                range = NSRange(location: range.location - 1, length: range.length + 1)
+            }
         }
         setSelectedRange(range)
         super.deleteBackward(nil)

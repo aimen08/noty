@@ -122,12 +122,12 @@ never surfaces — clicking the image selects it, arrow keys cross it like a
 single character, and deleting at it removes the whole image (and its line)
 in one undoable step.
 
-Hover an image for a drag handle at its bottom-right corner; click the image
-to select it — a white-and-accent frame with corner grips outlines its exact
-bounds, and dragging the handle shows the live `width × height` badge while
-the height follows the aspect ratio. Clicking or typing anywhere else drops
-the selection. The width is written back into the token —
-`![image|300](noty-img://…)` — so sizes survive restarts and export/import.
+Click an image to select it — a white-and-accent frame with corner and edge
+grips outlines its exact bounds, and dragging a grip shows the live
+`width × height` badge while the height follows the aspect ratio. Clicking or
+typing anywhere else drops the selection. The width is written back into the
+token — `![image|300](noty-img://…)` — so sizes survive restarts and
+export/import.
 
 Images live as files under `~/Library/Application Support/Noty/Images/` and
 are deleted when the last note referencing them is deleted. `.stickies`

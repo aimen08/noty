@@ -910,6 +910,10 @@ final class NoteImageOverlayView: NSView {
 
     override var isFlipped: Bool { true }
 
+    /// Crop mode is modal: the overlay takes first responder so Enter/Esc
+    /// reach `keyDown` instead of editing the note underneath.
+    override var acceptsFirstResponder: Bool { true }
+
     func setSelected(_ selected: Bool) {
         guard selected != isSelected else { return }
         isSelected = selected
@@ -946,6 +950,7 @@ final class NoteImageOverlayView: NSView {
         toolbar.setMode(cropping: true)
         needsLayout = true
         needsDisplay = true
+        window?.makeFirstResponder(self)
     }
 
     func cancelCropping() {
@@ -958,6 +963,10 @@ final class NoteImageOverlayView: NSView {
         toolbar.setMode(cropping: false)
         needsLayout = true
         needsDisplay = true
+        // Hand the keys back to the text view (the overlay's superview).
+        if window?.firstResponder === self, let tv = superview {
+            window?.makeFirstResponder(tv)
+        }
     }
 
     func commitCropping() {

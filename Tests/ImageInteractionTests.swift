@@ -13,11 +13,13 @@ enum ImageInteractionTests {
         tokenLineReservesImageSize(check)
         arrowKeysSnapAcrossToken(check)
         deleteRemovesWholeToken(check)
+        inlineTokenDeleteKeepsLineBreaks(check)
         forwardDeleteRemovesWholeToken(check)
         deleteIsOneUndoStep(check)
         cropImageProducesValidAspectImage(check)
         cropWithNormalizedRectProducesExactSubimage(check)
         overlayHitTestConvertsSuperviewPoint(check)
+        cropModeRoutesEnterAndEscape(check)
         titlesAndPreviewsStripTokens(check)
     }
 
@@ -127,6 +129,32 @@ enum ImageInteractionTests {
               "delete at the image edge lifts the whole line out, got \(tv2.string.debugDescription)")
     }
 
+    /// An inline token (text around it on the same line) deletes cleanly
+    /// without touching the line's own break.
+    private static func inlineTokenDeleteKeepsLineBreaks(_ check: (Bool, String) -> Void) {
+        let text = "before " + token + " after\nnext"
+        let tv = makeView(text)
+        style(tv)
+        tv.layoutManager?.ensureLayout(for: tv.textContainer!)
+
+        let tokenRange = ImageStore.tokens(in: text).first!.range
+        tv.setSelectedRange(NSRange(location: NSMaxRange(tokenRange), length: 0))
+        tv.deleteBackward(nil)
+        check(tv.string == "before  after\nnext",
+              "inline token delete keeps the line break, got \(tv.string.debugDescription)")
+
+        // Inline token at end of line: the break below must survive too.
+        let endOfLine = "before " + token + "\nafter"
+        let tv2 = makeView(endOfLine)
+        style(tv2)
+        tv2.layoutManager?.ensureLayout(for: tv2.textContainer!)
+        let tokenRange2 = ImageStore.tokens(in: endOfLine).first!.range
+        tv2.setSelectedRange(NSRange(location: NSMaxRange(tokenRange2), length: 0))
+        tv2.deleteBackward(nil)
+        check(tv2.string == "before \nafter",
+              "end-of-line inline token keeps the newline, got \(tv2.string.debugDescription)")
+    }
+
     /// Forward delete with the caret right before the image removes it whole.
     private static func forwardDeleteRemovesWholeToken(_ check: (Bool, String) -> Void) {
         let text = token + "\n"
@@ -192,6 +220,55 @@ enum ImageInteractionTests {
         let barArea = overlay.hitTest(NSPoint(x: 120, y: 372))  // toolbar centre, container coords
         check(barArea != nil && barArea !== overlay,
               "selected overlay's toolbar is clickable, got \(String(describing: barArea))")
+    }
+
+    /// While cropping, the overlay is first responder: Enter commits the crop
+    /// and Esc cancels it, and both hand the keys back to the text view.
+    private static func cropModeRoutesEnterAndEscape(_ check: (Bool, String) -> Void) {
+        let sample = NSImage(size: NSSize(width: 100, height: 100))
+        sample.lockFocus()
+        NSColor.blue.setFill()
+        NSRect(x: 0, y: 0, width: 100, height: 100).fill()
+        sample.unlockFocus()
+        guard let id = ImageStore.save(image: sample) else {
+            check(false, "saving crop-routing test image succeeded")
+            return
+        }
+        defer { ImageStore.delete(ids: [id]) }
+
+        let tv = makeView(ImageStore.token(id: id, width: nil) + "\n")
+        let overlay = NoteImageOverlayView(imageID: id, image: ImageStore.image(id: id))
+        overlay.frame = NSRect(x: 0, y: 0, width: 200, height: 200)
+        tv.addSubview(overlay)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = tv
+        window.makeFirstResponder(tv)
+
+        var applied: NSRect? = nil
+        overlay.onApplyCrop = { applied = $0 }
+
+        overlay.startCropping()
+        check(window.firstResponder === overlay,
+              "cropping makes the overlay first responder, got \(String(describing: window.firstResponder))")
+        overlay.keyDown(with: Self.keyEvent(36, window: window))  // Enter commits
+        check(applied != nil, "Enter commits the crop")
+        check(!overlay.isCropping, "cropping mode ends after Enter")
+        check(window.firstResponder === tv, "commit hands first responder back to the text view")
+
+        overlay.startCropping()
+        overlay.keyDown(with: Self.keyEvent(53, window: window))  // Esc cancels
+        check(!overlay.isCropping, "Esc cancels the crop")
+        check(window.firstResponder === tv, "cancel hands first responder back to the text view")
+    }
+
+    private static func keyEvent(_ keyCode: UInt16, window: NSWindow) -> NSEvent {
+        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+                         timestamp: 0, windowNumber: window.windowNumber,
+                         context: nil, characters: "", charactersIgnoringModifiers: "",
+                         isARepeat: false, keyCode: keyCode)!
     }
 
     /// Titles and previews never show the raw path, even on mixed lines.
