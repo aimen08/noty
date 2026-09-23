@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.9.1</title>
-      <pubDate>Wed, 23 Sep 2026 03:33:33 +0000</pubDate>
-      <sparkle:version>151</sparkle:version>
-      <sparkle:shortVersionString>1.9.1</sparkle:shortVersionString>
+      <title>1.9.2</title>
+      <pubDate>Wed, 23 Sep 2026 03:38:21 +0000</pubDate>
+      <sparkle:version>154</sparkle:version>
+      <sparkle:shortVersionString>1.9.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.9.1</p><ul><li><a href="https://github.com/aimen08/noty/pull/44">#44</a> Interactive image selection, resize, and crop &mdash; @Libeny</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.9.1/Noty.dmg" type="application/octet-stream" sparkle:edSignature="vycl+ujiwKbenG0WnSxoHYL4hmU3bYz9z/J2YlSOFblDk6t9N9DIlx2udHTj8pPYtUPQOUEjU5B6SvEphMyHBg==" length="2330439" />
+      <description><![CDATA[<p>Noty 1.9.2</p><ul><li>fix(deck): commit the panel resize and its redraw together</li><li>Release 1.9.1: update appcast</li></ul><p>Answered issues:</p><ul><li><a href="https://github.com/aimen08/noty/issues/43">#43</a> [Mac] Hovering over the side note triggers an oversized full-width expansion animation &mdash; requested by @binbx63</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.9.2/Noty.dmg" type="application/octet-stream" sparkle:edSignature="5NashvcOgiBQ2cxXZg2W2PFr05tqc0zbvhtvW+TrXh8nlLlBI9N8GpZ76vAr9oTT28mNoGz1LsfHdMZzbkHhCw==" length="2329839" />
     </item>
   </channel>
 </rss>
