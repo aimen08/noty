@@ -177,7 +177,17 @@ final class DeckController: NSObject {
             frame = NSRect(x: onRight ? full.maxX - w : full.minX,
                            y: vis.minY, width: w, height: vis.height)
         }
-        panel.setFrame(frame, display: true, animate: false)
+        // The new frame and the content drawn for it must reach the window server
+        // together. Committed apart, the resting pill's old bitmap is shown
+        // stretched to the fan's full width and eases back once SwiftUI redraws —
+        // seen after Show Desktop, when the app is idle and redraws late (#43).
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        panel.setFrame(frame, display: false, animate: false)
+        container.layoutSubtreeIfNeeded()
+        container.display()
+        CATransaction.commit()
+        CATransaction.flush()
     }
 
     func refreshLevel() {
