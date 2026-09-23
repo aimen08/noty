@@ -6,13 +6,13 @@
     <description>Sticky notes that live at the edge of your screen.</description>
     <language>en</language>
     <item>
-      <title>1.9.0</title>
-      <pubDate>Thu, 17 Sep 2026 06:36:39 +0000</pubDate>
-      <sparkle:version>147</sparkle:version>
-      <sparkle:shortVersionString>1.9.0</sparkle:shortVersionString>
+      <title>1.9.1</title>
+      <pubDate>Wed, 23 Sep 2026 03:33:33 +0000</pubDate>
+      <sparkle:version>151</sparkle:version>
+      <sparkle:shortVersionString>1.9.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Noty 1.9.0</p><ul><li><a href="https://github.com/aimen08/noty/pull/42">#42</a> Feature/markdown editor enhancements &mdash; @zwmmm</li></ul>]]></description>
-      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.9.0/Noty.dmg" type="application/octet-stream" sparkle:edSignature="D4Lyk9jgtuiuN3C9/1G2bk00y0GtSwicx3X3CGfFxUr5wkNXcxOJZa476CYTJcznvY8T/99xt97tBnf2GaXUDQ==" length="2294555" />
+      <description><![CDATA[<p>Noty 1.9.1</p><ul><li><a href="https://github.com/aimen08/noty/pull/44">#44</a> Interactive image selection, resize, and crop &mdash; @Libeny</li></ul>]]></description>
+      <enclosure url="https://github.com/aimen08/noty/releases/download/v1.9.1/Noty.dmg" type="application/octet-stream" sparkle:edSignature="vycl+ujiwKbenG0WnSxoHYL4hmU3bYz9z/J2YlSOFblDk6t9N9DIlx2udHTj8pPYtUPQOUEjU5B6SvEphMyHBg==" length="2330439" />
     </item>
   </channel>
 </rss>
