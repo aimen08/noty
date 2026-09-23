@@ -138,46 +138,17 @@ final class TaskTextView: NSTextView {
     /// coordinator can refresh it after every style pass.
     var imageOverlays: NoteImageOverlayManager?
 
-    /// The image token currently revealed for delete-confirmation, if any.
-    /// Image markup is never shown just because the caret is near it; the only
-    /// way to see the path is to press delete at the image, which selects the
-    /// token text so a second delete removes it and a paste replaces it.
-    var revealedImageID: String?
-
     override func deleteBackward(_ sender: Any?) {
         // A range selection means the user deliberately selected content —
-        // delete it straight away, confirmation is for caret deletions only.
+        // delete it straight away; the image-object path is for carets only.
         if selectedRange().length == 0, let token = hiddenImageTokenAtDeletionPoint() {
-            revealedImageID = token.id
-            setSelectedRange(token.range)
+            deleteImageToken(token)
             return
         }
         super.deleteBackward(sender)
     }
 
-    /// While a token sits revealed for delete-confirmation its whole range
-    /// stays selected; typing, Return or pasting would silently replace the
-    /// markup and orphan the image. Treat those as "keep it": move the caret
-    /// below the image, which makes the coordinator clear the reveal and
-    /// re-hide the line.
-    private func cancelImageRevealIfSelected() -> Bool {
-        guard let id = revealedImageID, let storage = textStorage,
-              let token = ImageStore.tokens(in: storage.string).first(where: { $0.id == id }),
-              selectedRange() == token.range else { return false }
-        var caret = NSMaxRange(token.range)
-        if caret < storage.length, (storage.string as NSString).character(at: caret) == 10 {
-            caret += 1
-        }
-        setSelectedRange(NSRange(location: caret, length: 0))
-        return true
-    }
-
-    override func insertText(_ string: Any) {
-        if cancelImageRevealIfSelected() { return }
-        super.insertText(string)
-    }
     override func insertNewline(_ sender: Any?) {
-        if cancelImageRevealIfSelected() { return }
         if handleListAutoContinuationOnNewline() { return }
         super.insertNewline(sender)
     }
@@ -387,7 +358,7 @@ final class TaskTextView: NSTextView {
     }
 
     /// Symmetric with backspace-after-the-image: forward-deleting INTO a
-    /// hidden token reveals it for confirmation instead of eating a markup
+    /// hidden token removes the whole image instead of eating a markup
     /// character the user cannot see.
     override func deleteForward(_ sender: Any?) {
         if selectedRange().length == 0, let storage = textStorage,
@@ -395,12 +366,34 @@ final class TaskTextView: NSTextView {
                .first(where: { $0.range.location == selectedRange().location }),
            storage.attribute(.notyHidden, at: token.range.location,
                              effectiveRange: nil) != nil {
-            revealedImageID = token.id
-            setSelectedRange(token.range)
+            deleteImageToken(token)
             return
         }
         super.deleteForward(sender)
     }
+
+    /// Deletes a hidden image token as one undoable edit. When the token
+    /// occupies a whole line its line break goes along so the note does not
+    /// keep an empty line where the picture was; an inline token keeps the
+    /// surrounding line breaks untouched. Selecting the range and letting
+    /// super delete keeps the removal grouped as a single ⌘Z step.
+    func deleteImageToken(_ token: (id: String, width: CGFloat?, range: NSRange)) {
+        guard let storage = textStorage else { return }
+        let ns = storage.string as NSString
+        var range = token.range
+        let precededByBreak = range.location == 0 || ns.character(at: range.location - 1) == 10
+        let followedByBreak = NSMaxRange(range) == ns.length || ns.character(at: NSMaxRange(range)) == 10
+        if precededByBreak && followedByBreak {
+            if NSMaxRange(range) < ns.length {
+                range.length += 1
+            } else if range.location > 0 {
+                range = NSRange(location: range.location - 1, length: range.length + 1)
+            }
+        }
+        setSelectedRange(range)
+        super.deleteBackward(nil)
+    }
+
 
     // MARK: Character-like image navigation
 
@@ -481,6 +474,10 @@ final class TaskTextView: NSTextView {
     }
 
     override func viewDidMoveToWindow() {
+        // A closed or recycled note panel must not keep undo groups that point
+        // at this text storage: a later ⌘Z would invoke them on a dead object
+        // (EXC_BAD_ACCESS in _NSUndoStack.popAndInvoke).
+        if window == nil { undoManager?.removeAllActions() }
         super.viewDidMoveToWindow()
         TaskTextView.wireEditMenu()
     }
@@ -610,7 +607,6 @@ final class TaskTextView: NSTextView {
     /// An image on the pasteboard becomes a token on its own line; everything
     /// else keeps the plain-text paste behaviour.
     override func paste(_ sender: Any?) {
-        if cancelImageRevealIfSelected() { return }
         let ids = ImagePasteboard.imageIDs(from: .general)
         guard !ids.isEmpty else {
             super.paste(sender)
@@ -657,9 +653,8 @@ final class TaskTextView: NSTextView {
     /// Insert each token on its own line at the caret as one undoable edit —
     /// the same shouldChangeText / replaceCharacters / didChangeText pattern
     /// as EditorBridge.toggleTaskLine, so undo and the style pipeline see a
-    /// normal text change. The caret lands on a fresh line BELOW the token:
-    /// leaving it on the token's own line would trip the caret-line reveal and
-    /// show raw markup instead of the image the user just dropped in.
+    /// normal text change. The caret lands on a fresh line BELOW the token, so
+    /// the next keystroke continues the note instead of touching the markup.
     func insertImageTokens(_ tokens: [String]) {
         guard !tokens.isEmpty, let storage = textStorage else { return }
         let ns = storage.string as NSString
@@ -774,6 +769,9 @@ struct NoteTextView: NSViewRepresentable {
         guard let tv = scroll.documentView as? NSTextView else { return }
         tv.delegate = nil
         tv.textStorage?.delegate = nil
+        // See TaskTextView.viewDidMoveToWindow: pending undo groups must not
+        // outlive the text view they would be invoked against.
+        tv.undoManager?.removeAllActions()
     }
 
     static func applyTextDirection(_ direction: NoteTextDirection, to textView: NSTextView) {
@@ -797,7 +795,6 @@ struct NoteTextView: NSViewRepresentable {
         EditorStyleEngine.apply(to: tv,
                                 ranges: ranges,
                                 revealing: activeLine,
-                                forceRevealImageID: (tv as? TaskTextView)?.revealedImageID,
                                 ink: ink,
                                 size: size,
                                 markdownEnabled: markdownEnabled,
@@ -869,28 +866,6 @@ struct NoteTextView: NSViewRepresentable {
             guard !edits.hasPendingEdits else { return }
 
             let line = activeLine(in: tv)
-
-            // A revealed (delete-confirmation) image token hides again once the
-            // caret leaves its markup or the markup stops parsing as a token.
-            if let taskView = tv as? TaskTextView, let id = taskView.revealedImageID {
-                let token = ImageStore.tokens(in: taskView.string).first { $0.id == id }
-                let caret = taskView.selectedRange()
-                let inside = token.map { t in
-                    // The reveal's whole-token selection counts as inside; a
-                    // bare caret only up to the markup's end, so cancelling
-                    // (caret parked just past it) still re-hides the line.
-                    caret.length > 0
-                        ? NSIntersectionRange(caret, t.range).length > 0
-                        : caret.location >= t.range.location && caret.location < NSMaxRange(t.range)
-                } ?? false
-                if !inside {
-                    taskView.revealedImageID = nil
-                    let previous = lastLine
-                    lastLine = line
-                    applyIncremental([previous, line], to: tv, invalidateCursors: false)
-                    return
-                }
-            }
 
             guard parent.markdownEnabled else {
                 lastLine = line
