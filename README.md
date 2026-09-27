@@ -9,6 +9,17 @@ deck fans out.
 **[noty-sepia.vercel.app](https://noty-sepia.vercel.app)** ·
 **[Download the latest DMG](https://github.com/aimen08/noty/releases/latest/download/Noty.dmg)**
 
+Or with [Homebrew](https://brew.sh):
+
+```sh
+brew tap aimen08/noty https://github.com/aimen08/noty
+brew install --cask noty
+```
+
+The cask picks the Apple Silicon or Intel build for you, and updates after that
+arrive in-app. The app is ad-hoc signed, so the first launch needs a
+right-click → Open.
+
 ![Noty in use: the deck fans out from the screen edge, a checklist is pulled open, two tasks are ticked off, and the note is dismissed by clicking away](demo.gif)
 
 | At rest | Fanned | A note pulled open |

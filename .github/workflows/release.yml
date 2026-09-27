@@ -18,6 +18,7 @@ on:
       - '.github/**'
       - 'appcast.xml'
       - 'appcast-intel.xml'
+      - 'Casks/**'
       - 'site/**'
       - 'media/**'
       - 'screenshots/**'
@@ -194,9 +195,21 @@ jobs:
         env:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
+          # The Homebrew cask rides along in the same commit: `brew tap` reads
+          # Casks/ straight from main, so it must point at this release's DMGs.
+          ARM_SHA="$(shasum -a 256 build/Noty.dmg | cut -d' ' -f1)"
+          INTEL_SHA="$(shasum -a 256 build/Noty-intel.dmg | cut -d' ' -f1)"
+          sed -i '' -E \
+            -e "s/^  version \"[^\"]*\"/  version \"${VERSION}\"/" \
+            -e "s/arm:( *)\"[0-9a-f]{64}\"/arm:\1\"${ARM_SHA}\"/" \
+            -e "s/intel:( *)\"[0-9a-f]{64}\"/intel:\1\"${INTEL_SHA}\"/" \
+            Casks/noty.rb
+          grep -q "version \"${VERSION}\"" Casks/noty.rb
+          grep -q "$ARM_SHA" Casks/noty.rb
+          grep -q "$INTEL_SHA" Casks/noty.rb
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add appcast.xml appcast-intel.xml
+          git add appcast.xml appcast-intel.xml Casks/noty.rb
           if git diff --cached --quiet; then
             echo "appcast unchanged"
             exit 0
