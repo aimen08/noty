@@ -13,6 +13,7 @@ Or with [Homebrew](https://brew.sh):
 
 ```sh
 brew tap aimen08/noty https://github.com/aimen08/noty
+brew trust aimen08/noty      # Homebrew 7+ asks you to trust a third-party tap
 brew install --cask noty
 ```
 
