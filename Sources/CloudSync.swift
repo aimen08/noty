@@ -117,7 +117,12 @@ final class CloudSync {
             store.delete(id: id)          // keeps the existing ten-second undo
             index.forget(noteID: id)
         case .deleteRemote(let name):
-            folder.remove(name)
+            // Preserve edits made remotely before a local deletion reaches iCloud.
+            if let remote = scanned[name], let local = store.note(id: remote.id), local.isTrashed,
+               remote.body != local.body {
+                guard folder.writeConflict(Self.conflictDocument(for: remote), named: name) else { return }
+            }
+            guard folder.remove(name) else { return }
             if let id = index.id(forFileName: name) { index.forget(noteID: id) }
         case .conflict(let id, let name, let localWins):
             resolve(noteID: id, fileName: name, localWins: localWins)

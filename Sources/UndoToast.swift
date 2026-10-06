@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 
-/// "⌘⌫ deletes it with ten seconds to undo." — a floating confirmation that
+/// "⌘⌫ moves it to Trash with ten seconds for immediate undo." — a confirmation that
 /// tracks NoteStore.pendingUndo.
 final class UndoToast {
     static let shared = UndoToast()
@@ -66,7 +66,7 @@ struct UndoToastView: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(L10n.text("undo.note_deleted")).font(.system(size: 12, weight: .medium))
-                Text(pending.note.displayTitle)
+                Text(pending.count > 1 ? L10n.format("organize.selected", pending.count) : pending.note.displayTitle)
                     .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 0)

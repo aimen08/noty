@@ -1,14 +1,16 @@
 import AppKit
 import Carbon.HIToolbox
+import Combine
 
 /// Global shortcuts registered through the Carbon hotkey API, which — unlike an
 /// event tap — needs no Accessibility permission.
-final class HotKeys {
+final class HotKeys: ObservableObject {
     static let shared = HotKeys()
 
     private var refs: [EventHotKeyRef?] = []
     private var actions: [UInt32: () -> Void] = [:]
     private var handler: EventHandlerRef?
+    @Published private(set) var unavailableShortcuts: [Shortcut] = []
     private let signature: OSType = 0x4E4F5459   // 'NOTY'
 
     private init() {}
@@ -18,12 +20,14 @@ final class HotKeys {
     func register(newNote: @escaping () -> Void,
                   allNotes: @escaping () -> Void,
                   archive: @escaping () -> Void,
-                  capture: @escaping () -> Void) {
+                  capture: @escaping () -> Void,
+                  search: @escaping () -> Void) {
         handlers = [
             (1, { Settings.scNewNote }, newNote),
             (2, { Settings.scAllNotes }, allNotes),
             (3, { Settings.scArchive }, archive),
             (4, { Settings.scCapture }, capture),
+            (5, { Settings.scGlobalSearch }, search),
         ]
         reload()
     }
@@ -33,11 +37,16 @@ final class HotKeys {
     func reload() {
         unregisterHotKeys()
         installHandler()
+        var unavailable: [Shortcut] = []
         for h in handlers {
             let s = h.shortcut()
             guard s.isSet else { continue }
-            add(id: h.id, key: s.keyCode, mods: s.modifiers, action: h.action)
+            if !add(id: h.id, key: s.keyCode, mods: s.modifiers, action: h.action) {
+                unavailable.append(s)
+            }
         }
+        unavailableShortcuts = unavailable
+        (NSApp.delegate as? AppDelegate)?.refreshSearchShortcut()
     }
 
     private func installHandler() {
@@ -59,7 +68,7 @@ final class HotKeys {
                             Unmanaged.passUnretained(self).toOpaque(), &handler)
     }
 
-    private func add(id: UInt32, key: UInt32, mods: UInt32, action: @escaping () -> Void) {
+    private func add(id: UInt32, key: UInt32, mods: UInt32, action: @escaping () -> Void) -> Bool {
         var ref: EventHotKeyRef?
         let hkID = EventHotKeyID(signature: signature, id: id)
         let status = RegisterEventHotKey(key, mods, hkID, GetApplicationEventTarget(), 0, &ref)
@@ -69,6 +78,7 @@ final class HotKeys {
         } else {
             NSLog("Noty: hotkey \(id) unavailable (status \(status)) — another app may own it")
         }
+        return status == noErr
     }
 
     private func unregisterHotKeys() {

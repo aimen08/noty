@@ -35,7 +35,12 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
 /// Thin UserDefaults wrapper for the handful of togglable preferences.
 enum Settings {
-    private static let d = UserDefaults.standard
+    private static let d: UserDefaults = {
+        if let path = ProcessInfo.processInfo.environment["NOTY_DATA_DIR"] {
+            return UserDefaults(suiteName: "app.noty.isolated." + URL(fileURLWithPath: path).lastPathComponent) ?? .standard
+        }
+        return .standard
+    }()
     private static let applicationDomain = Bundle.main.bundleIdentifier ?? "app.noty.Noty"
 
     /// Uses the same application-domain preference as macOS System Settings,
@@ -143,6 +148,10 @@ enum Settings {
     static var scAllNotes: Shortcut {
         get { shortcut("scAllNotes", default: Shortcut(keyCode: 0, modifiers: 2048 | 256)) }
         set { setShortcut("scAllNotes", newValue) }
+    }
+    static var scGlobalSearch: Shortcut {
+        get { shortcut("scGlobalSearch", default: Shortcut(keyCode: 3, modifiers: 2048 | 256)) } // ⌥⌘F
+        set { setShortcut("scGlobalSearch", newValue) }
     }
     static var scCapture: Shortcut {
         get { shortcut("scCapture", default: Shortcut(keyCode: 49, modifiers: 512 | 256)) }  // ⇧⌘Space

@@ -680,10 +680,7 @@ struct NotePreviewCard: View {
                     }
                 }
 
-                let lines = note.body.split(whereSeparator: \.isNewline).map(String.init)
-                    .map(Note.strippingImageTokens)
-                    .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-                let previewLines = Array((note.hasCustomTitle ? lines : Array(lines.dropFirst())).prefix(4))
+                let previewLines = Array(note.previewLines.prefix(4))
                 if !previewLines.isEmpty {
                     VStack(alignment: .leading, spacing: 3) {
                         ForEach(Array(previewLines.enumerated()), id: \.offset) { _, line in
@@ -836,6 +833,9 @@ struct CogButton: View {
 extension View {
     func noteContextMenu(_ note: Note) -> some View {
         contextMenu {
+            Button(L10n.text("organize.float")) { FloatingNotes.shared.open(ids: [note.id]) }
+            Button(L10n.text("note.maximize")) { FloatingNotes.shared.maximize(id: note.id) }
+            Button(L10n.text("note.full_screen")) { FloatingNotes.shared.fullScreen(id: note.id) }
             Button(note.pinned ? L10n.text("action.unpin") : L10n.text("action.pin")) { NoteStore.shared.togglePin(id: note.id) }
             Button(L10n.text("action.archive")) { NoteStore.shared.setArchived(id: note.id, true) }
             Button(L10n.text("help.cycle_colour")) { NoteStore.shared.cycleColor(id: note.id) }

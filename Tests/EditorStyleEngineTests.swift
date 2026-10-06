@@ -31,6 +31,9 @@ struct EditorStyleEngineTests {
         ImageInteractionTests.run { check($0, $1) }
         testCustomNoteTitleBehavior()
         PersistenceTests.run { check($0, $1) }
+        OrganizationTests.run { check($0, $1) }
+        FormattingTests.run { check($0, $1) }
+        GlobalSearchTests.run { check($0, $1) }
 
         guard failures == 0 else {
             fputs("EditorStyleEngineTests: \(failures) failure(s)\n", stderr)

@@ -22,9 +22,12 @@ enum NoteDocument {
         static let order = "order"
         static let direction = "direction"
         static let title = "title"
+        static let project = "project"
+        static let tags = "tags"
+        static let deleted = "deleted-at"
 
         static let all: Set<String> = [id, color, created, modified,
-                                       archived, pinned, order, direction, title]
+                                       archived, pinned, order, direction, title, project, tags, deleted]
     }
 
     static let stamp: ISO8601DateFormatter = {
@@ -50,10 +53,20 @@ enum NoteDocument {
         if note.hasCustomTitle {
             header.append("\(Key.title): \(singleLine(note.title))")
         }
+        // JSON strings preserve punctuation and Unicode in the single-line header.
+        if !note.project.isEmpty {
+            header.append("\(Key.project): \(json(note.project))")
+        }
+        if !note.tags.isEmpty { header.append("\(Key.tags): \(json(note.tags))") }
+        if let deleted = note.deletedAt { header.append("\(Key.deleted): \(stamp.string(from: deleted))") }
         return fence + "\n"
             + header.joined(separator: "\n") + "\n"
             + fence + "\n\n"
             + Tasks.toMarkdown(note.body)
+    }
+
+    private static func json<T: Encodable>(_ value: T) -> String {
+        String(decoding: (try? JSONEncoder().encode(value)) ?? Data(), as: UTF8.self)
     }
 
     /// A title is one line by construction, but a header cannot survive a stray
@@ -94,6 +107,11 @@ enum NoteDocument {
                 case Key.order:     note.order = Double(value) ?? note.order
                 case Key.direction: note.textDirection = NoteTextDirection(rawValue: value) ?? .automatic
                 case Key.title:     note.title = value
+                case Key.project:
+                    note.project = (try? JSONDecoder().decode(String.self, from: Data(value.utf8))) ?? value
+                case Key.tags:
+                    note.tags = Note.normalizedTags((try? JSONDecoder().decode([String].self, from: Data(value.utf8))) ?? [])
+                case Key.deleted: note.deletedAt = stamp.date(from: value)
                 default: break
                 }
             }

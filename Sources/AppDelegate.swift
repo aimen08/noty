@@ -3,6 +3,11 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var deckManager: DeckManager!
+    private var searchMenuItem: NSMenuItem?
+
+    func refreshSearchShortcut() {
+        if let searchMenuItem { Settings.scGlobalSearch.apply(to: searchMenuItem) }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -16,7 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             newNote: { [weak self] in self?.newNote() },
             allNotes: { [weak self] in self?.openAllNotes() },
             archive:  { [weak self] in self?.openArchive() },
-            capture:  { QuickCapture.shared.toggle() }
+            capture:  { QuickCapture.shared.toggle() },
+            search:   { GlobalSearch.shared.show() }
         )
 
         // Sparkle only schedules its background checks once the controller
@@ -53,6 +59,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openAllNotes() { LibraryWindow.shared.show(mode: .all) }
+    @objc func globalSearch() { GlobalSearch.shared.show() }
+    @objc func openTrash() { LibraryWindow.shared.show(mode: .trash) }
+    @objc func openBoard() { NoteBoardWindow.shared.show(ids: NoteStore.shared.active.map(\.id)) }
+    @objc func closeFloatingNotes() { FloatingNotes.shared.closeAll() }
     @objc func quickCapture() { QuickCapture.shared.toggle() }
 
     /// noty:// — the whole automation surface. The text only ever becomes note
@@ -72,6 +82,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case "new", "capture":
                 QuickCapture.shared.show()
             case "all":      openAllNotes()
+            case "board":    openBoard()
+            case "trash":    openTrash()
             case "settings": openSettings()
             default: break
             }
@@ -142,9 +154,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Settings.launchAtLogin.toggle()
     }
 
-    @objc func exportMarkdown()  { Transfer.export(.markdown,  notes: NoteStore.shared.notes) }
-    @objc func exportPlainText() { Transfer.export(.plainText, notes: NoteStore.shared.notes) }
-    @objc func exportSingleFile(){ Transfer.export(.singleFile, notes: NoteStore.shared.notes) }
+    @objc func exportMarkdown()  { Transfer.export(.markdown,  notes: NoteStore.shared.living) }
+    @objc func exportPlainText() { Transfer.export(.plainText, notes: NoteStore.shared.living) }
+    @objc func exportSingleFile(){ Transfer.export(.singleFile, notes: NoteStore.shared.living) }
     @objc func exportStickies()  { Transfer.export(.stickies,  notes: NoteStore.shared.notes) }
     @objc func importStickies()  { Transfer.importFiles() }
 
@@ -239,11 +251,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(.separator())
         let newNoteItem = appMenu.addItem(withTitle: L10n.text("menu.new_note"), action: #selector(newNote), keyEquivalent: "n")
         let allNotesItem = appMenu.addItem(withTitle: L10n.text("menu.all_notes"), action: #selector(openAllNotes), keyEquivalent: "a")
+        searchMenuItem = appMenu.addItem(withTitle: L10n.text("search.title"), action: #selector(globalSearch), keyEquivalent: "")
         let archiveItem = appMenu.addItem(withTitle: L10n.text("menu.archive"), action: #selector(openArchive), keyEquivalent: "l")
+        appMenu.addItem(withTitle: L10n.text("organize.board"), action: #selector(openBoard), keyEquivalent: "")
+        appMenu.addItem(withTitle: L10n.text("organize.scope.trash"), action: #selector(openTrash), keyEquivalent: "")
+        appMenu.addItem(withTitle: L10n.text("organize.close_floating"), action: #selector(closeFloatingNotes), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: L10n.text("menu.settings"), action: #selector(openSettings), keyEquivalent: ",")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: L10n.text("menu.import"), action: #selector(importStickies), keyEquivalent: "i")
+        let importItem = appMenu.addItem(withTitle: L10n.text("menu.import"), action: #selector(importStickies), keyEquivalent: "i")
+        importItem.keyEquivalentModifierMask = [.command, .shift]
         appMenu.addItem(.separator())
         let bigger = appMenu.addItem(withTitle: L10n.text("menu.bigger_text"), action: #selector(biggerText), keyEquivalent: "+")
         bigger.keyEquivalentModifierMask = [.control]
@@ -275,8 +292,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         edit.addItem(withTitle: L10n.text("menu.copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         edit.addItem(withTitle: L10n.text("menu.paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         edit.addItem(withTitle: L10n.text("menu.select_all"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(.separator())
+        let emoji = edit.addItem(withTitle: L10n.text("format.emoji"),
+                                 action: #selector(NSApplication.orderFrontCharacterPalette(_:)), keyEquivalent: " ")
+        emoji.keyEquivalentModifierMask = [.control, .command]
+        emoji.target = NSApp
         editItem.submenu = edit
         main.addItem(editItem)
+
+        let formatItem = NSMenuItem()
+        let format = NSMenu(title: L10n.text("format.menu"))
+        format.addItem(withTitle: L10n.text("format.bold"), action: #selector(TaskTextView.notyToggleBold(_:)), keyEquivalent: "b")
+        format.addItem(withTitle: L10n.text("format.italic"), action: #selector(TaskTextView.notyToggleItalic(_:)), keyEquivalent: "i")
+        format.addItem(withTitle: L10n.text("format.underline"), action: #selector(TaskTextView.notyToggleUnderline(_:)), keyEquivalent: "u")
+        let strike = format.addItem(withTitle: L10n.text("format.strike"), action: #selector(TaskTextView.notyToggleStrike(_:)), keyEquivalent: "x")
+        strike.keyEquivalentModifierMask = [.command, .shift]
+        format.addItem(.separator())
+        format.addItem(withTitle: L10n.text("format.clear"), action: #selector(TaskTextView.notyClearFormatting(_:)), keyEquivalent: "")
+        formatItem.submenu = format
+        main.addItem(formatItem)
+
+        let windowItem = NSMenuItem()
+        let windowMenu = NSMenu(title: L10n.text("note.window_menu"))
+        windowMenu.addItem(withTitle: L10n.text("note.maximize"), action: #selector(NSWindow.zoom(_:)), keyEquivalent: "")
+        let fullScreen = windowMenu.addItem(withTitle: L10n.text("note.full_screen"),
+                                            action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
+        fullScreen.keyEquivalentModifierMask = [.control, .command]
+        windowItem.submenu = windowMenu
+        main.addItem(windowItem)
+        NSApp.windowsMenu = windowMenu
 
         NSApp.mainMenu = main
     }

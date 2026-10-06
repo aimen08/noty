@@ -10,6 +10,29 @@ struct Shortcut: Equatable, Codable {
     static let none = Shortcut(keyCode: 0, modifiers: 0)
     var isSet: Bool { keyCode != 0 || modifiers != 0 }
 
+    /// Keep the menu's foreground shortcut in sync with the global binding.
+    func apply(to item: NSMenuItem) {
+        guard isSet else { item.keyEquivalent = ""; return }
+        switch Int(keyCode) {
+        case kVK_Space: item.keyEquivalent = " "
+        case kVK_Return: item.keyEquivalent = "\r"
+        case kVK_Tab: item.keyEquivalent = "\t"
+        case kVK_Escape: item.keyEquivalent = "\u{1b}"
+        case kVK_Delete: item.keyEquivalent = "\u{8}"
+        case kVK_LeftArrow: item.keyEquivalent = String(UnicodeScalar(NSLeftArrowFunctionKey)!)
+        case kVK_RightArrow: item.keyEquivalent = String(UnicodeScalar(NSRightArrowFunctionKey)!)
+        case kVK_UpArrow: item.keyEquivalent = String(UnicodeScalar(NSUpArrowFunctionKey)!)
+        case kVK_DownArrow: item.keyEquivalent = String(UnicodeScalar(NSDownArrowFunctionKey)!)
+        default: item.keyEquivalent = Self.characters(for: keyCode)?.lowercased() ?? ""
+        }
+        var flags: NSEvent.ModifierFlags = []
+        if modifiers & UInt32(cmdKey) != 0 { flags.insert(.command) }
+        if modifiers & UInt32(optionKey) != 0 { flags.insert(.option) }
+        if modifiers & UInt32(shiftKey) != 0 { flags.insert(.shift) }
+        if modifiers & UInt32(controlKey) != 0 { flags.insert(.control) }
+        item.keyEquivalentModifierMask = flags
+    }
+
     // MARK: Display
 
     var display: String {

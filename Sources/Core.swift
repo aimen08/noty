@@ -8,6 +8,12 @@ import Darwin
 
 enum Paths {
     static let support: URL = {
+        // Isolated data directory for development and regression tests.
+        if let path = ProcessInfo.processInfo.environment["NOTY_DATA_DIR"], !path.isEmpty {
+            let url = URL(fileURLWithPath: path, isDirectory: true)
+            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Noty", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
@@ -360,6 +366,17 @@ struct Note: Identifiable, Hashable {
     var pinned: Bool = false
     var textDirection: NoteTextDirection = .automatic
     var order: Double = 0
+    var project: String = ""
+    var tags: [String] = []
+    var deletedAt: Date?
+
+    var isTrashed: Bool { deletedAt != nil }
+
+    static func normalizedTags(_ tags: [String]) -> [String] {
+        var seen = Set<String>()
+        return tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
+    }
 
     var palette: NoteColor { NoteColor.at(color) }
 
@@ -371,7 +388,7 @@ struct Note: Identifiable, Hashable {
     /// Image tokens are stripped out, so a note that opens with a picture is
     /// named by its first words rather than by `![image](noty-img://…)`.
     static func derivedTitle(from body: String) -> String {
-        for raw in body.split(whereSeparator: \.isNewline) {
+        for raw in NoteFormatting.plainText(body).split(whereSeparator: \.isNewline) {
             var clean = strippingImageTokens(String(raw))
                 .trimmingCharacters(in: .whitespaces)
                 .replacingOccurrences(of: "^#{1,6}\\s*", with: "", options: .regularExpression)
@@ -416,7 +433,7 @@ struct Note: Identifiable, Hashable {
     /// Completed / total, or nil when the note holds no tasks.
     var taskProgress: (done: Int, total: Int)? {
         var done = 0, total = 0
-        for line in body.split(whereSeparator: \.isNewline) {
+        for line in NoteFormatting.plainText(body).split(whereSeparator: \.isNewline) {
             switch Tasks.marker(of: line) {
             case Tasks.done: done += 1; total += 1
             case Tasks.open: total += 1
@@ -426,18 +443,22 @@ struct Note: Identifiable, Hashable {
         return total > 0 ? (done, total) : nil
     }
 
-    /// Collapsed snippet used as list subtitle.
+    /// Visible body lines shared by the list subtitle and the tab-hover card.
     /// If the note has an independent custom title, the first line of the body is
     /// part of the content and included in the preview; otherwise the first line
     /// is skipped because it already serves as the title. Image tokens are
     /// stripped first, so the skipped/taken lines line up with `derivedTitle`.
-    var preview: String {
-        let lines = body.split(whereSeparator: \.isNewline).map(String.init)
+    /// Decode formatting before splitting: older style spans can cross lines.
+    var previewLines: [String] {
+        let lines = NoteFormatting.plainText(body).split(whereSeparator: \.isNewline).map(String.init)
             .map(Self.strippingImageTokens)
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let rest = (hasCustomTitle ? lines : Array(lines.dropFirst()))
-            .joined(separator: " ")
-            .trimmingCharacters(in: .whitespaces)
+        return hasCustomTitle ? lines : Array(lines.dropFirst())
+    }
+
+    /// Collapsed snippet used as list subtitle.
+    var preview: String {
+        let rest = previewLines.joined(separator: " ").trimmingCharacters(in: .whitespaces)
         return rest.count > 120 ? String(rest.prefix(120)) + "…" : rest
     }
 }

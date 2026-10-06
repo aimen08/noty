@@ -1,18 +1,24 @@
 import AppKit
 import SwiftUI
+import Combine
 
-/// A note pulled off the deck and left wherever it was dropped. It keeps the
-/// deck's manners: idle too long and it tucks itself back to the screen edge —
-/// unless it is pinned, in which case it stays put like any good sticky.
-/// One at a time, matching the deck's one-open-note model; pulling a second
-/// note out tucks the first.
+final class NoteWindowState: ObservableObject {
+    @Published var maximized = false
+    @Published var fullScreen = false
+    @Published var transitioning = false
+}
+
+/// One independently movable note. Floating notes remain open until explicitly
+/// closed or moved to Trash, so a workspace does not disappear while reading.
 final class FloatingNote: NSObject, NSWindowDelegate {
-    static let shared = FloatingNote()
+    var onClose: (() -> Void)?
 
     private(set) var noteID: String?
-    private var panel: NSPanel?
-    private var idleTimer: Timer?
-    private var lastActivity = Date()
+    private var panel: FloatingPanel?
+    let windowState = NoteWindowState()
+    private var restoreFrame: NSRect?
+    private var closeAfterTransition = false
+    private var storeObserver: AnyCancellable?
     private var keyMonitor: Any?
 
     var isShowing: Bool { noteID != nil }
@@ -22,28 +28,30 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     /// Called mid-drag, the moment the note crosses the detach threshold. The
     /// panel appears under the pointer and `dragTo` steers it until mouse-up.
     func present(id: String, under pointer: NSPoint, grabOffset: NSPoint) {
-        if noteID != nil { tuck(animated: false) }
+        guard noteID == nil else { focus(); return }
 
         let size = Settings.floatingNoteSize
-        // .resizable on a borderless window is what turns every edge and
-        // corner into a native live-resize band, system cursors included —
-        // no hand-rolled drag handles, and no relayout jank from driving the
-        // frame ourselves.
+        // A titled NSWindow supports native full-screen Spaces and tiling.
+        // Each controller retains its own editor and restore geometry.
         let p = FloatingPanel(contentRect: NSRect(origin: .zero, size: size),
-                              styleMask: [.borderless, .nonactivatingPanel, .resizable],
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable],
                               backing: .buffered, defer: false)
+        p.noteController = self
+        p.tabbingMode = .disallowed
         p.minSize = NSSize(width: 280, height: 220)
         p.isOpaque = false
         p.backgroundColor = .clear
         p.hasShadow = true
+        p.title = NoteStore.shared.note(id: id)?.displayTitle ?? "Noty"
         p.level = .floating
-        p.collectionBehavior = Settings.confineToSpace
-            ? [.fullScreenAuxiliary] : [.canJoinAllSpaces, .fullScreenAuxiliary]
+        p.collectionBehavior = normalCollectionBehavior
         p.isReleasedWhenClosed = false
         p.delegate = self
         p.contentView = NSHostingView(rootView: FloatingNoteView(
             noteID: id,
-            onActivity: { [weak self] in self?.lastActivity = Date() },
+            windowState: windowState,
+            onMaximize: { [weak self] in self?.toggleMaximize() },
+            onFullScreen: { [weak self] in self?.toggleFullScreen() },
             onClose: { [weak self] in self?.tuck() }))
         p.contentView?.layoutSubtreeIfNeeded()
 
@@ -52,17 +60,94 @@ final class FloatingNote: NSObject, NSWindowDelegate {
         self.grabOffset = grabOffset
         dragTo(pointer)
         p.orderFrontRegardless()
-        startIdleWatch()
+        startWatching()
     }
 
     // MARK: Resizing
 
-    /// Live resize counts as activity — a note must never tuck away mid-grab.
-    func windowDidResize(_ notification: Notification) { lastActivity = Date() }
-
     func windowDidEndLiveResize(_ notification: Notification) {
-        guard let panel else { return }
-        Settings.floatingNoteSize = panel.frame.size
+        guard let panel, !windowState.fullScreen, !windowState.transitioning else { return }
+        restoreFrame = nil
+        windowState.maximized = false
+        Settings.floatingNoteSize = panel.contentRect(forFrameRect: panel.frame).size
+    }
+
+    private var normalCollectionBehavior: NSWindow.CollectionBehavior {
+        Settings.confineToSpace ? [.fullScreenPrimary] : [.canJoinAllSpaces, .fullScreenPrimary]
+    }
+
+    func toggleMaximize() {
+        guard let panel, !windowState.fullScreen, !windowState.transitioning,
+              let screen = panel.screen ?? NSScreen.main else { return }
+        if let restoreFrame {
+            // Keep a restored note reachable if a display was disconnected.
+            var frame = restoreFrame
+            let visible = screen.visibleFrame
+            frame.size.width = min(frame.width, visible.width)
+            frame.size.height = min(frame.height, visible.height)
+            frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+            frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+            panel.setFrame(frame, display: true)
+            self.restoreFrame = nil
+            windowState.maximized = false
+        } else {
+            restoreFrame = panel.frame
+            windowState.maximized = true
+            panel.setFrame(screen.visibleFrame, display: true)
+        }
+        focus()
+    }
+
+    func enterFullScreen() {
+        guard !windowState.fullScreen, !windowState.transitioning else { focus(); return }
+        toggleFullScreen()
+    }
+
+    func toggleFullScreen() {
+        guard let panel, !windowState.transitioning else { return }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        panel.makeKeyAndOrderFront(nil)
+        windowState.transitioning = true
+        panel.level = .normal
+        panel.collectionBehavior = [.fullScreenPrimary]
+        panel.toggleNativeFullScreen()
+    }
+
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        windowState.transitioning = true
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        windowState.fullScreen = true
+        finishFullScreenTransition()
+    }
+
+    func windowWillExitFullScreen(_ notification: Notification) {
+        windowState.transitioning = true
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        windowState.fullScreen = false
+        finishFullScreenTransition()
+    }
+
+    func windowDidFailToEnterFullScreen(_ window: NSWindow) {
+        windowState.fullScreen = false
+        finishFullScreenTransition()
+    }
+
+    func windowDidFailToExitFullScreen(_ window: NSWindow) {
+        windowState.fullScreen = true
+        closeAfterTransition = false
+        finishFullScreenTransition()
+    }
+
+    private func finishFullScreenTransition() {
+        windowState.transitioning = false
+        if !windowState.fullScreen { panel?.collectionBehavior = normalCollectionBehavior }
+        applyLevel()
+        if closeAfterTransition { closeAfterTransition = false; tuck(animated: false) }
     }
 
     /// Where inside the note the user grabbed it, so the paper does not jump
@@ -71,7 +156,6 @@ final class FloatingNote: NSObject, NSWindowDelegate {
 
     func dragTo(_ pointer: NSPoint) {
         guard let panel else { return }
-        lastActivity = Date()
         panel.setFrameOrigin(NSPoint(x: pointer.x - grabOffset.x,
                                      y: pointer.y - grabOffset.y))
     }
@@ -79,7 +163,8 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     /// Mouse released: the note now lives here. Take key so typing just works.
     func endDrag(cancelled: Bool) {
         if cancelled { tuck(animated: false); return }
-        lastActivity = Date()
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
         applyLevel()
         panel?.makeKeyAndOrderFront(nil)
     }
@@ -92,7 +177,7 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     func applyLevel() {
         guard let panel, let id = noteID else { return }
         let pinned = NoteStore.shared.note(id: id)?.pinned ?? false
-        let level: NSWindow.Level = pinned ? .floating : .normal
+        let level: NSWindow.Level = pinned && !windowState.fullScreen && !windowState.transitioning ? .floating : .normal
         if panel.level != level { panel.level = level }
     }
 
@@ -101,12 +186,17 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     /// makeKey only fronts it within Noty — orderFrontRegardless is what lifts
     /// it above the app you are actually in.
     func focus() {
-        lastActivity = Date()
         guard let panel else {
             NSLog("Noty: focus — no floating panel")
             return
         }
-        NSLog("Noty: focus lift  visible=\(panel.isVisible) level=\(panel.level.rawValue)")
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        if panel.isMiniaturized { panel.deminiaturize(nil) }
+        if windowState.fullScreen || windowState.transitioning {
+            panel.makeKeyAndOrderFront(nil)
+            return
+        }
         // Front-of-level for a background app's normal-level window is the
         // flaky corner of AppKit ordering. Lift at floating level so the raise
         // is unambiguous, then settle back to whatever the pin says once the
@@ -125,14 +215,23 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     /// hover away in the deck, exactly as if it had been closed there.
     func tuck(animated: Bool = true) {
         guard let panel else { return }
-        stopIdleWatch()
-        let id = noteID
+        if windowState.transitioning { closeAfterTransition = true; return }
+        if windowState.fullScreen {
+            closeAfterTransition = true
+            toggleFullScreen()
+            return
+        }
+        stopWatching()
+        if let id = noteID { NoteStore.shared.flush(id: id) }
         noteID = nil
         self.panel = nil
+        panel.delegate = nil
+        onClose?()
 
         let finish = {
-            panel.orderOut(nil)
+            panel.close()
             panel.contentView = nil
+            AppWindows.didClose(Notification(name: NSWindow.willCloseNotification, object: panel))
         }
         guard animated, let screen = panel.screen ?? NSScreen.main else { finish(); return }
         let onRight = !Settings.deckOnLeftEdge
@@ -147,64 +246,72 @@ final class FloatingNote: NSObject, NSWindowDelegate {
             finish()
             panel.alphaValue = 1
         })
-        _ = id
     }
 
-    // MARK: Idle
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        tuck(animated: false)
+        return false
+    }
 
-    private func startIdleWatch() {
-        stopIdleWatch()
-        lastActivity = Date()
-        // Esc tucks the note from anywhere inside it, matching the deck.
+    // MARK: Store and keyboard observation
+
+    private func startWatching() {
+        stopWatching()
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let panel = self.panel, panel.isKeyWindow else { return event }
-            self.lastActivity = Date()
-            if event.keyCode == 53 { self.tuck(); return nil }
+            let plainEscape = event.keyCode == 53 && event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty
+            if plainEscape && (self.windowState.fullScreen || self.windowState.transitioning) {
+                // Let the input method cancel its marked text first.
+                if let editor = panel.firstResponder as? NSTextView, editor.hasMarkedText() { return event }
+                if !self.windowState.transitioning { self.toggleFullScreen() }
+                return nil
+            }
+            if Settings.scClose.matches(event) { self.tuck(); return nil }
             return event
         }
-        idleTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            guard let self, let panel = self.panel, let id = self.noteID else { return }
-            // A note deleted or archived elsewhere has nothing left to float.
-            guard let note = NoteStore.shared.note(id: id), !note.archived else {
+        storeObserver = NoteStore.shared.$notes.receive(on: RunLoop.main).sink { [weak self] notes in
+            guard let self, let id = self.noteID else { return }
+            guard let note = notes.first(where: { $0.id == id }), !note.isTrashed else {
                 self.tuck(animated: false); return
             }
+            self.panel?.title = note.displayTitle
             self.applyLevel()
-            if note.pinned || panel.isKeyWindow
-                || panel.frame.insetBy(dx: -8, dy: -8).contains(NSEvent.mouseLocation) {
-                self.lastActivity = Date()
-                return
-            }
-            if Date().timeIntervalSince(self.lastActivity) > Settings.noteIdleTimeout {
-                self.tuck()
-            }
         }
     }
 
-    private func stopIdleWatch() {
-        idleTimer?.invalidate(); idleTimer = nil
+    private func stopWatching() {
+        storeObserver = nil
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
     }
+
+    deinit {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+    }
+
 }
 
-/// Borderless panels refuse key status by default; a note that cannot be typed
-/// into is a screenshot.
-private final class FloatingPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
+/// Route native zoom and full-screen controls through the same per-note state.
+private final class FloatingPanel: NSWindow {
+    weak var noteController: FloatingNote?
+    override func zoom(_ sender: Any?) { noteController?.toggleMaximize() }
+    override func toggleFullScreen(_ sender: Any?) { noteController?.toggleFullScreen() }
+    func toggleNativeFullScreen() { super.toggleFullScreen(nil) }
 }
 
 /// The note's paper, free of the deck. Same editor, same autosave; the header
 /// doubles as the drag handle.
 private struct FloatingNoteView: View {
     let noteID: String
-    let onActivity: () -> Void
+    @ObservedObject var windowState: NoteWindowState
+    let onMaximize: () -> Void
+    let onFullScreen: () -> Void
     let onClose: () -> Void
 
     @ObservedObject private var store = NoteStore.shared
     @StateObject private var bridge = EditorBridge()
     private var textBinding: Binding<String> {
         Binding(get: { store.note(id: noteID)?.body ?? "" }, set: {
-            onActivity()
             store.updateBody(id: noteID, body: $0)
         })
     }
@@ -216,6 +323,7 @@ private struct FloatingNoteView: View {
             let pal = note.palette
             VStack(spacing: 0) {
                 header(note, pal)
+                NoteFormattingBar(bridge: bridge, foreground: pal.ink.opacity(0.8))
                 NoteTextView(text: textBinding, ink: NSColor(pal.ink),
                              bridge: bridge, autofocus: false,
                              fontSize: Settings.noteFontSize,
@@ -246,9 +354,25 @@ private struct FloatingNoteView: View {
                 .foregroundStyle(pal.ink.opacity(0.92))
                 .lineLimit(1)
             Spacer(minLength: 6)
+            Button(action: onMaximize) {
+                Image(systemName: windowState.maximized ? "rectangle.compress.vertical" : "rectangle.expand.vertical")
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.plain)
+            .help(L10n.text(windowState.maximized ? "note.restore_size" : "note.maximize"))
+            .accessibilityLabel(L10n.text(windowState.maximized ? "note.restore_size" : "note.maximize"))
+            .disabled(windowState.fullScreen || windowState.transitioning)
+            Button(action: onFullScreen) {
+                Image(systemName: windowState.fullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.plain)
+            .help(L10n.text(windowState.fullScreen ? "note.exit_full_screen" : "note.full_screen"))
+            .accessibilityLabel(L10n.text(windowState.fullScreen ? "note.exit_full_screen" : "note.full_screen"))
+            .disabled(windowState.transitioning)
             Button {
                 NoteStore.shared.togglePin(id: note.id)
-                FloatingNote.shared.applyLevel()
+                FloatingNotes.shared.applyLevels()
             } label: {
                 Image(systemName: note.pinned ? "pin.fill" : "pin")
                     .font(Ink.bodyFont(11).weight(.semibold))
@@ -271,6 +395,7 @@ private struct FloatingNoteView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 34)
+        .foregroundStyle(pal.ink.opacity(0.8))
         .contentShape(Rectangle())
         // The header is the handle: NSWindow does the dragging natively, which
         // keeps it smooth and lets it cross displays for free.

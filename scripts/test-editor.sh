@@ -21,4 +21,4 @@ swiftc -parse-as-library -swift-version 5 \
     "$ROOT"/Tests/*.swift \
     -o "$OUT/EditorStyleEngineTests"
 
-"$OUT/EditorStyleEngineTests"
+NOTY_DATA_DIR="$OUT/data" "$OUT/EditorStyleEngineTests"

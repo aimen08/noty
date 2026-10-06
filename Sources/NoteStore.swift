@@ -22,6 +22,7 @@ final class NoteStore: ObservableObject {
     struct PendingDelete: Equatable {
         let note: Note
         let deadline: Date
+        var count: Int = 1
     }
 
     init(store: Store = Store(), seedWelcome: Bool = true,
@@ -94,8 +95,8 @@ final class NoteStore: ObservableObject {
 
     // MARK: Derived collections
 
-    var active: [Note] { notes.filter { !$0.archived }.sorted { $0.order < $1.order } }
-    var archived: [Note] { notes.filter { $0.archived }.sorted { $0.modified > $1.modified } }
+    var active: [Note] { notes.filter { !$0.archived && !$0.isTrashed }.sorted { $0.order < $1.order } }
+    var archived: [Note] { notes.filter { $0.archived && !$0.isTrashed }.sorted { $0.modified > $1.modified } }
 
     func note(id: String) -> Note? { notes.first { $0.id == id } }
 
@@ -115,7 +116,7 @@ final class NoteStore: ObservableObject {
     }
 
     func updateTitle(id: String, title: String) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard writable, let i = notes.firstIndex(where: { $0.id == id && !$0.isTrashed }) else { return }
         guard notes[i].title != title else { return }
         notes[i].title = title
         notes[i].modified = Date()
@@ -123,7 +124,7 @@ final class NoteStore: ObservableObject {
     }
 
     func updateBody(id: String, body: String) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard writable, let i = notes.firstIndex(where: { $0.id == id && !$0.isTrashed }) else { return }
         guard notes[i].body != body else { return }
         notes[i].body = body
         notes[i].modified = Date()
@@ -131,20 +132,20 @@ final class NoteStore: ObservableObject {
     }
 
     func togglePin(id: String) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard writable, let i = notes.firstIndex(where: { $0.id == id && !$0.isTrashed }) else { return }
         notes[i].pinned.toggle()
         persist(notes[i])
     }
 
     func cycleColor(id: String) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard writable, let i = notes.firstIndex(where: { $0.id == id && !$0.isTrashed }) else { return }
         notes[i].color = (notes[i].color + 1) % NoteColor.all.count
         notes[i].modified = Date()
         persist(notes[i])
     }
 
     func setColor(id: String, color: Int) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard writable, let i = notes.firstIndex(where: { $0.id == id && !$0.isTrashed }) else { return }
         guard NoteColor.all.indices.contains(color) else { return }
         notes[i].color = color
         notes[i].modified = Date()
@@ -152,7 +153,7 @@ final class NoteStore: ObservableObject {
     }
 
     func setTextDirection(id: String, direction: NoteTextDirection) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }),
+        guard writable, let i = notes.firstIndex(where: { $0.id == id && !$0.isTrashed }),
               notes[i].textDirection != direction else { return }
         notes[i].textDirection = direction
         notes[i].modified = Date()
@@ -160,64 +161,117 @@ final class NoteStore: ObservableObject {
     }
 
     func setArchived(id: String, _ archived: Bool) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        guard writable, let i = notes.firstIndex(where: { $0.id == id && !$0.isTrashed }) else { return }
         notes[i].archived = archived
         notes[i].modified = Date()
         if !archived { notes[i].order = (active.map(\.order).min() ?? 0) - 1 }
         persist(notes[i])
     }
 
-    /// Removes the note but keeps it recoverable for ten seconds.
-    func delete(id: String) {
-        guard writable, let i = notes.firstIndex(where: { $0.id == id }) else { return }
-        // A second delete before the first undo window closes replaces
-        // pendingUndo; the earlier note is then unrecoverable, so its images
-        // are cleaned up now rather than leaked. Done while the new note is
-        // still in `notes` so an image it shares with the earlier note is not
-        // mistaken for unreferenced.
-        finalizePendingDelete()
-        let doomed = notes[i]
-        do { try store.delete(id: id) }
-        catch { report(error); return }
-        saveWork.removeValue(forKey: id)?.cancel()
-        unsavedIDs.remove(id)
-        notes.remove(at: i)
-        pendingUndo = PendingDelete(note: doomed, deadline: Date().addingTimeInterval(10))
+    var living: [Note] { notes.filter { !$0.isTrashed } }
+    var trash: [Note] { notes.filter(\.isTrashed).sorted { $0.deletedAt! > $1.deletedAt! } }
+    var projects: [String] { Array(Set(living.map(\.project).filter { !$0.isEmpty })).sorted() }
+    var tags: [String] { Note.normalizedTags(living.flatMap(\.tags)).sorted() }
+
+    @discardableResult
+    private func commit(_ changed: [Note], removing ids: Set<String> = []) -> Bool {
+        guard writable else { return false }
+        do { try store.transaction(upserting: changed, deleting: Array(ids)) }
+        catch { report(error); return false }
+        for id in Set(changed.map(\.id)).union(ids) {
+            saveWork.removeValue(forKey: id)?.cancel()
+            unsavedIDs.remove(id)
+        }
+        let replacements = Dictionary(uniqueKeysWithValues: changed.map { ($0.id, $0) })
+        let existing = Set(notes.map(\.id))
+        notes = notes.filter { !ids.contains($0.id) }.map { replacements[$0.id] ?? $0 }
+            + changed.filter { !existing.contains($0.id) }
+        if unsavedIDs.isEmpty { lastError = nil }
+        return true
+    }
+
+    @discardableResult
+    func organize(ids: Set<String>, project: String? = nil, tags: [String]? = nil,
+                  addingTags: Bool = false, color: Int? = nil, archived: Bool? = nil) -> Bool {
+        let changed = notes.filter { ids.contains($0.id) && !$0.isTrashed }.map { old in
+            var n = old
+            if let project { n.project = project.trimmingCharacters(in: .whitespacesAndNewlines) }
+            if let tags { n.tags = Note.normalizedTags((addingTags ? n.tags : []) + tags) }
+            if let color { n.color = color }
+            if let archived { n.archived = archived }
+            n.modified = Date()
+            return n
+        }
+        return commit(changed)
+    }
+
+    /// Trash survives restarts; the toast is only a convenient immediate undo.
+    func delete(id: String) { trash(ids: [id]) }
+
+    @discardableResult
+    func trash(ids: Set<String>) -> Bool {
+        let originals = notes.filter { ids.contains($0.id) && !$0.isTrashed }
+        let now = Date()
+        let changed = originals.map { old in
+            var n = old; n.deletedAt = now; n.modified = now; return n
+        }
+        guard !changed.isEmpty, commit(changed) else { return false }
+        pendingUndo = PendingDelete(note: originals[0], deadline: now.addingTimeInterval(10), count: originals.count)
+        pendingUndoIDs = Set(changed.map(\.id))
         undoTimer?.invalidate()
         undoTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async { self?.expireUndo() }
+            self?.pendingUndo = nil
+            self?.pendingUndoIDs = []
         }
+        return true
     }
+
+    private var pendingUndoIDs = Set<String>()
 
     func undoDelete() {
-        guard writable, let p = pendingUndo else { return }
+        guard restore(ids: pendingUndoIDs) else { return }
         undoTimer?.invalidate()
-        notes.append(p.note)
-        persist(p.note)
         pendingUndo = nil
+        pendingUndoIDs = []
     }
 
-    private func expireUndo() {
-        finalizePendingDelete()
-        pendingUndo = nil
+    @discardableResult
+    func restore(ids: Set<String>) -> Bool {
+        let changed = notes.filter { ids.contains($0.id) && $0.isTrashed }.map { old in
+            var n = old; n.deletedAt = nil; n.modified = Date(); return n
+        }
+        return commit(changed)
     }
 
-    /// Image cleanup waits out the undo window: the files must survive as long
-    /// as the note can come back. Ids another note still references are kept —
-    /// one image file may be shared by several notes.
-    private func finalizePendingDelete() {
-        guard let p = pendingUndo else { return }
-        let doomed = Set(ImageStore.referencedIDs(in: p.note.body))
-        guard !doomed.isEmpty else { return }
-        let stillUsed = Set(notes.flatMap { ImageStore.referencedIDs(in: $0.body) })
-        let unreferenced = doomed.subtracting(stillUsed)
-        if !unreferenced.isEmpty { ImageStore.delete(ids: unreferenced.sorted()) }
+    @discardableResult
+    func permanentlyDelete(ids: Set<String>) -> Bool {
+        let removing = Set(trash.filter { ids.contains($0.id) }.map(\.id))
+        guard commit([], removing: removing) else { return false }
+        pendingUndoIDs.subtract(removing)
+        if pendingUndoIDs.isEmpty { pendingUndo = nil }
+        removeOrphanedImages()
+        return true
     }
 
-    /// Quitting inside the undo window strands the pending note's images (the
-    /// row is already gone from SQLite, so undo cannot survive a relaunch).
-    /// Sweeping unreferenced files once at launch also covers any leak from a
-    /// crash between saving an image and persisting the body that uses it.
+    /// Keep the originals recoverable and publish the merged note atomically.
+    @discardableResult
+    func merge(ids: Set<String>) -> Note? {
+        let source = living.filter { ids.contains($0.id) }.sorted { $0.order < $1.order }
+        guard source.count > 1 else { return nil }
+        let now = Date()
+        var merged = Note(title: source[0].displayTitle,
+                          body: source.map { "## " + $0.displayTitle + "\n\n" + $0.body }
+                            .joined(separator: "\n\n---\n\n"), color: source[0].color)
+        merged.project = Set(source.map(\.project)).count == 1 ? source[0].project : ""
+        merged.tags = Note.normalizedTags(source.flatMap(\.tags))
+        merged.order = (active.map(\.order).min() ?? 0) - 1
+        let originals = source.map { old in
+            var n = old; n.deletedAt = now; n.modified = now; return n
+        }
+        return commit(originals + [merged]) ? merged : nil
+    }
+
+    /// Trashed notes still own their images until explicitly permanently deleted.
     private func removeOrphanedImages() {
         let used = Set(notes.flatMap { ImageStore.referencedIDs(in: $0.body) })
         let orphans = ImageStore.allIDs().filter { !used.contains($0) }
@@ -257,24 +311,35 @@ final class NoteStore: ObservableObject {
         persist(notes[i])
     }
 
-    /// Bulk insert used by import — returns how many notes landed.
-    @discardableResult
-    func ingest(_ incoming: [Note]) -> Int {
-        guard writable else { return 0 }
+    struct ImportResult {
         var added = 0
+        var skipped = 0
+        var failed = 0
+    }
+
+    @discardableResult
+    func ingest(_ incoming: [Note]) -> Int { importNotes(incoming).added }
+
+    func importNotes(_ incoming: [Note]) -> ImportResult {
+        guard writable else { return ImportResult(failed: incoming.count) }
+        var result = ImportResult()
+        // Include trash: importing the same backup should not resurrect deleted notes.
+        var fingerprints = Set(notes.map(NoteIdentity.fingerprint))
+        var ids = Set(notes.map(\.id))
+        var accepted: [Note] = []
         var base = (notes.map(\.order).min() ?? 0) - Double(incoming.count)
         for var n in incoming.sorted(by: { $0.order < $1.order }) {
-            if notes.contains(where: { $0.id == n.id }) { n.id = UUID().uuidString }
-            n.order = base
-            base += 1
-            guard NoteColor.all.indices.contains(n.color) else {
-                report(PersistenceError.invalidColor)
-                continue
-            }
-            notes.append(n)
-            if persist(n) { added += 1 }
+            guard NoteColor.all.indices.contains(n.color) else { result.failed += 1; continue }
+            let fingerprint = NoteIdentity.fingerprint(n)
+            guard fingerprints.insert(fingerprint).inserted else { result.skipped += 1; continue }
+            if ids.contains(n.id) { n.id = UUID().uuidString }
+            ids.insert(n.id)
+            n.order = base; base += 1
+            accepted.append(n)
         }
-        return added
+        if commit(accepted) { result.added = accepted.count }
+        else { result.failed += accepted.count }
+        return result
     }
 
     /// Insert or replace a note wholesale, keeping the timestamps it arrives

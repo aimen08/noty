@@ -198,6 +198,14 @@
 "settings.window_title" = "Noty 设置";
 
 "shortcut.all_notes" = "所有便笺";
+"search.title" = "全局搜索";
+"search.placeholder" = "搜索标题、正文、项目或标签";
+"search.results" = "搜索结果";
+"search.hint" = "↑ ↓ 选择     ↩ 打开便签     Esc 关闭";
+"search.recent" = "最近修改的便签 · 包含已归档";
+"search.count" = "找到 %d 篇便签";
+"search.empty" = "你的便签会显示在这里";
+"shortcut.unavailable" = "此全局快捷键未能注册，可能被其他应用占用，请更换组合。";
 "shortcut.archive_note" = "归档便笺";
 "shortcut.archive_window" = "归档窗口";
 "shortcut.duplicate" = "已被其他快捷键使用";
@@ -213,7 +221,7 @@
 "size.medium" = "中";
 "size.small" = "小";
 
-"undo.note_deleted" = "便笺已删除";
+"undo.note_deleted" = "已移入回收站";
 
 "updates.install_sparkle" = "请运行 ./scripts/fetch-sparkle.sh 并重新构建，以加入更新程序。";
 "updates.last_checked" = "上次检查于 %@。";
@@ -238,3 +246,59 @@
 "storage.error_help" = "原始数据已保留。未保存的编辑仍保留在本次会话中。请解决存储问题后重试；Noty 会在退出前重新尝试保存。";
 "storage.import_unsaved" = "部分导入的便笺无法保存。";
 "import.invalid_archive" = "此归档无效或使用了不受支持的版本。";
+
+/* Organization and note wall */
+"organize.scope.all" = "全部";
+"organize.scope.active" = "使用中";
+"organize.scope.archive" = "归档";
+"organize.scope.trash" = "回收站";
+"organize.sort.manual" = "手动顺序";
+"organize.sort.modified" = "最近修改";
+"organize.sort.created" = "最近创建";
+"organize.sort.title" = "标题排序";
+"organize.permanent_title" = "永久删除选中的便签？";
+"organize.permanent" = "永久删除";
+"organize.permanent_message" = "此操作无法撤销，仅由这些便签使用的图片也会删除。";
+"organize.cancel" = "取消";
+"organize.save" = "保存";
+"organize.spread" = "铺开便签";
+"organize.selected" = "已选择 %ld 张";
+"organize.edit" = "分类整理";
+"organize.unarchive" = "移回使用中";
+"organize.merge" = "合并（原便签移入回收站）";
+"organize.float" = "独立悬浮打开";
+"organize.actions" = "批量操作";
+"organize.trash" = "移入回收站";
+"organize.search" = "搜索标题、正文、项目、标签";
+"organize.all_projects" = "所有项目";
+"organize.no_project" = "未分组";
+"organize.all_tags" = "所有标签";
+"organize.all_colors" = "所有颜色";
+"organize.select_all" = "全选";
+"organize.selection_hint" = "按住 ⌘ 或 Shift 点击可选择多张便签。";
+"organize.project" = "设置项目分组";
+"organize.project_prompt" = "项目名称，留空则移出分组";
+"organize.existing" = "选择已有";
+"organize.tags" = "设置标签";
+"organize.tags_prompt" = "多个标签用逗号分隔";
+"organize.add_tags" = "添加标签，保留已有标签";
+"organize.board" = "便签墙";
+"organize.card_size" = "卡片宽度";
+"organize.close_floating" = "收起所有悬浮便签";
+"import.result" = "已导入 %ld 张便签，跳过 %ld 张内容相同的便签。";
+"format.menu" = "格式";
+"format.emoji" = "表情与符号…";
+"format.bold" = "加粗  ⌘B";
+"format.italic" = "斜体  ⌘I";
+"format.underline" = "下划线  ⌘U";
+"format.strike" = "删除线  ⇧⌘X";
+"format.size" = "字号";
+"format.default_size" = "默认字号";
+"format.clear" = "清除格式";
+"format.undo" = "文本格式";
+"format.scope" = "对选中文字设置格式；未选择文字时作用于当前段落。";
+"note.window_menu" = "窗口";
+"note.maximize" = "放大便签";
+"note.restore_size" = "恢复原尺寸";
+"note.full_screen" = "全屏便签";
+"note.exit_full_screen" = "退出全屏";

@@ -198,6 +198,14 @@
 "settings.window_title" = "Noty Settings";
 
 "shortcut.all_notes" = "All Notes";
+"search.title" = "Global Search";
+"search.placeholder" = "Search titles, text, projects or tags";
+"search.results" = "Search results";
+"search.hint" = "↑ ↓ Select     ↩ Open note     Esc Close";
+"search.recent" = "Recent notes · includes archived notes";
+"search.count" = "%d matching notes";
+"search.empty" = "Your notes will appear here";
+"shortcut.unavailable" = "This global shortcut is unavailable. Another app may use it; choose a different combination.";
 "shortcut.archive_note" = "Archive note";
 "shortcut.archive_window" = "Archive window";
 "shortcut.duplicate" = "Already used by another shortcut";
@@ -213,7 +221,7 @@
 "size.medium" = "Medium";
 "size.small" = "Small";
 
-"undo.note_deleted" = "Note deleted";
+"undo.note_deleted" = "Moved to Trash";
 
 "updates.install_sparkle" = "Run ./scripts/fetch-sparkle.sh and rebuild to add the updater.";
 "updates.last_checked" = "Last checked %@.";
@@ -238,3 +246,59 @@
 "storage.error_help" = "Your original data has been kept. Unsaved edits remain in this session. Resolve the storage problem and try again; Noty will retry saving before quitting.";
 "storage.import_unsaved" = "Some imported notes could not be saved.";
 "import.invalid_archive" = "This archive is invalid or uses an unsupported version.";
+
+/* Organization and note wall */
+"organize.scope.all" = "All";
+"organize.scope.active" = "Active";
+"organize.scope.archive" = "Archive";
+"organize.scope.trash" = "Trash";
+"organize.sort.manual" = "Deck order";
+"organize.sort.modified" = "Recently edited";
+"organize.sort.created" = "Recently created";
+"organize.sort.title" = "Title";
+"organize.permanent_title" = "Permanently delete selected notes?";
+"organize.permanent" = "Delete permanently";
+"organize.permanent_message" = "This cannot be undone. Images used only by these notes will also be removed.";
+"organize.cancel" = "Cancel";
+"organize.save" = "Save";
+"organize.spread" = "Spread notes";
+"organize.selected" = "%ld selected";
+"organize.edit" = "Organize";
+"organize.unarchive" = "Move to active";
+"organize.merge" = "Merge · move originals to Trash";
+"organize.float" = "Open floating notes";
+"organize.actions" = "Actions";
+"organize.trash" = "Move to Trash";
+"organize.search" = "Search title, content, project, tags";
+"organize.all_projects" = "All projects";
+"organize.no_project" = "No project";
+"organize.all_tags" = "All tags";
+"organize.all_colors" = "All colours";
+"organize.select_all" = "Select all";
+"organize.selection_hint" = "Command-click or Shift-click to select multiple notes.";
+"organize.project" = "Change project";
+"organize.project_prompt" = "Project name · empty removes the group";
+"organize.existing" = "Choose existing";
+"organize.tags" = "Change tags";
+"organize.tags_prompt" = "Separate tags with commas";
+"organize.add_tags" = "Add tags while keeping existing tags";
+"organize.board" = "Note wall";
+"organize.card_size" = "Card width";
+"organize.close_floating" = "Close all floating notes";
+"import.result" = "Imported %ld notes; skipped %ld exact duplicates.";
+"format.menu" = "Format";
+"format.emoji" = "Emoji & Symbols…";
+"format.bold" = "Bold  ⌘B";
+"format.italic" = "Italic  ⌘I";
+"format.underline" = "Underline  ⌘U";
+"format.strike" = "Strikethrough  ⇧⌘X";
+"format.size" = "Font size";
+"format.default_size" = "Default size";
+"format.clear" = "Clear formatting";
+"format.undo" = "Text formatting";
+"format.scope" = "Format the selected text, or the current paragraph when nothing is selected.";
+"note.window_menu" = "Window";
+"note.maximize" = "Maximize Note";
+"note.restore_size" = "Restore Size";
+"note.full_screen" = "Full Screen Note";
+"note.exit_full_screen" = "Exit Full Screen";

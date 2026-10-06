@@ -12,7 +12,10 @@ enum CloudFolder {
     static let fileExtension = "md"
 
     static var driveRoot: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        if ProcessInfo.processInfo.environment["NOTY_DATA_DIR"] != nil {
+            return Paths.support.appendingPathComponent("Cloud", isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs",
                                     isDirectory: true)
     }

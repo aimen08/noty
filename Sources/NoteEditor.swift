@@ -132,6 +132,58 @@ final class HidingLayoutManager: NSLayoutManager {
 /// Text view that treats a leading ☐ / ☑ as a real checkbox: clicking the box
 /// toggles it, Return carries the list on, and finished lines get struck through.
 final class TaskTextView: NSTextView {
+    private var changingFormatting = false
+
+    func applyFormatting(_ command: NoteFormatting.Command) {
+        guard isEditable, !hasMarkedText(), let storage = textStorage,
+              let edit = NoteFormatting.edit(string, selection: selectedRange(), command: command) else { return }
+        let viewport = EditorViewport(self)
+        defer { viewport?.restore(in: self) }
+        applySourceEdit(edit, storage: storage)
+        undoManager?.setActionName(L10n.text("format.undo"))
+        window?.makeFirstResponder(self)
+    }
+
+    private func applySourceEdit(_ edit: NoteFormatting.Edit, storage: NSTextStorage) {
+        changingFormatting = true
+        defer { changingFormatting = false }
+        let range = NSRange(location: 0, length: storage.length)
+        guard super.shouldChangeText(in: range, replacementString: edit.text) else { return }
+        storage.replaceCharacters(in: range, with: edit.text)
+        didChangeText()
+        setSelectedRange(edit.selection)
+    }
+
+    @objc func notyToggleBold(_ sender: Any?) { applyFormatting(.bold) }
+    @objc func notyToggleItalic(_ sender: Any?) { applyFormatting(.italic) }
+    @objc func notyToggleUnderline(_ sender: Any?) { applyFormatting(.underline) }
+    @objc func notyToggleStrike(_ sender: Any?) { applyFormatting(.strike) }
+    @objc func notyClearFormatting(_ sender: Any?) { applyFormatting(.clear) }
+
+    /// Arrow keys and clicks must never leave the insertion point inside a
+    /// hidden formatting tag. Image tokens retain their separate object logic.
+    func selectionOutsideFormattingMarkers(_ proposed: NSRange, from previous: NSRange) -> NSRange {
+        guard proposed.length == 0, let storage = textStorage,
+              proposed.location < storage.length else { return proposed }
+        var marker = NSRange()
+        guard storage.attribute(.notyFormattingMarker, at: proposed.location, effectiveRange: &marker) != nil,
+              proposed.location > marker.location else { return proposed }
+        return NSRange(location: proposed.location < previous.location ? marker.location : NSMaxRange(marker), length: 0)
+    }
+
+    override func shouldChangeText(in affectedCharRange: NSRange,
+                                   replacementString: String?) -> Bool {
+        // Programmatic checkbox/image edits use this entry point directly;
+        // AppKit does not consistently gate them on the editor's read-only state.
+        guard isEditable else { return false }
+        if !changingFormatting, !hasMarkedText(), undoManager?.isUndoing != true,
+           undoManager?.isRedoing != true, let replacementString, let storage = textStorage,
+           let edit = NoteFormatting.replacing(string, range: affectedCharRange, with: replacementString) {
+            applySourceEdit(edit, storage: storage)
+            return false
+        }
+        return super.shouldChangeText(in: affectedCharRange, replacementString: replacementString)
+    }
 
     /// Owns the image overlays and the line-height delegate for image tokens.
     /// Installed by NoteTextView.makeNSView; kept on the view so the editor
@@ -139,6 +191,14 @@ final class TaskTextView: NSTextView {
     var imageOverlays: NoteImageOverlayManager?
 
     override func deleteBackward(_ sender: Any?) {
+        if selectedRange().length == 0, selectedRange().location > 0, let storage = textStorage {
+            var marker = NSRange()
+            let caret = selectedRange().location
+            if storage.attribute(.notyFormattingMarker, at: caret - 1, effectiveRange: &marker) != nil {
+                setSelectedRange(NSRange(location: marker.location, length: 0))
+                if marker.location == 0 { return }
+            }
+        }
         // A range selection means the user deliberately selected content —
         // delete it straight away; the image-object path is for carets only.
         if selectedRange().length == 0, let token = hiddenImageTokenAtDeletionPoint() {
@@ -173,6 +233,9 @@ final class TaskTextView: NSTextView {
     }
 
     private func handleListAutoContinuationOnNewline() -> Bool {
+        // A recognized list command consumes Return even when shouldChangeText
+        // returns false: the formatting normalizer may already have applied it.
+        // Falling through to super would insert a second newline.
         guard let storage = textStorage else { return false }
         let ns = string as NSString
         let sel = selectedRange()
@@ -193,8 +256,8 @@ final class TaskTextView: NSTextView {
                     storage.replaceCharacters(in: lineRange, with: replacement)
                     didChangeText()
                     setSelectedRange(NSRange(location: lineRange.location + (replacement as NSString).length, length: 0))
-                    return true
                 }
+                return true
             } else {
                 // Continue new empty task item
                 let nextPrefix = "\n\(indent)\(Tasks.openPrefix)"
@@ -202,8 +265,8 @@ final class TaskTextView: NSTextView {
                     storage.replaceCharacters(in: sel, with: nextPrefix)
                     didChangeText()
                     setSelectedRange(NSRange(location: sel.location + (nextPrefix as NSString).length, length: 0))
-                    return true
                 }
+                return true
             }
         }
 
@@ -220,16 +283,16 @@ final class TaskTextView: NSTextView {
                     storage.replaceCharacters(in: lineRange, with: replacement)
                     didChangeText()
                     setSelectedRange(NSRange(location: lineRange.location + (replacement as NSString).length, length: 0))
-                    return true
                 }
+                return true
             } else {
                 let nextPrefix = "\n\(indent)\(bullet) "
                 if shouldChangeText(in: sel, replacementString: nextPrefix) {
                     storage.replaceCharacters(in: sel, with: nextPrefix)
                     didChangeText()
                     setSelectedRange(NSRange(location: sel.location + (nextPrefix as NSString).length, length: 0))
-                    return true
                 }
+                return true
             }
         }
 
@@ -246,8 +309,8 @@ final class TaskTextView: NSTextView {
                     storage.replaceCharacters(in: lineRange, with: replacement)
                     didChangeText()
                     setSelectedRange(NSRange(location: lineRange.location + (replacement as NSString).length, length: 0))
-                    return true
                 }
+                return true
             } else {
                 let nextNumber = incrementNumberSection(rawNumber)
                 let nextPrefix = "\n\(indent)\(nextNumber). "
@@ -255,8 +318,8 @@ final class TaskTextView: NSTextView {
                     storage.replaceCharacters(in: sel, with: nextPrefix)
                     didChangeText()
                     setSelectedRange(NSRange(location: sel.location + (nextPrefix as NSString).length, length: 0))
-                    return true
                 }
+                return true
             }
         }
 
@@ -361,6 +424,14 @@ final class TaskTextView: NSTextView {
     /// hidden token removes the whole image instead of eating a markup
     /// character the user cannot see.
     override func deleteForward(_ sender: Any?) {
+        if selectedRange().length == 0, let storage = textStorage,
+           selectedRange().location < storage.length {
+            var marker = NSRange()
+            if storage.attribute(.notyFormattingMarker, at: selectedRange().location, effectiveRange: &marker) != nil {
+                setSelectedRange(NSRange(location: NSMaxRange(marker), length: 0))
+                if NSMaxRange(marker) == storage.length { return }
+            }
+        }
         if selectedRange().length == 0, let storage = textStorage,
            let token = ImageStore.tokens(in: storage.string)
                .first(where: { $0.range.location == selectedRange().location }),
@@ -597,11 +668,23 @@ final class TaskTextView: NSTextView {
     /// data, which would keep paste(_:) from ever seeing it. Claim the command
     /// whenever the clipboard can provide an image.
     override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        if [#selector(notyToggleBold(_:)), #selector(notyToggleItalic(_:)),
+            #selector(notyToggleUnderline(_:)), #selector(notyToggleStrike(_:)),
+            #selector(notyClearFormatting(_:))].contains(item.action) {
+            return isEditable && !string.isEmpty && !hasMarkedText()
+        }
         if (item.action == #selector(paste(_:)) || item.action == #selector(pasteAsPlainText(_:))),
            ImagePasteboard.canProvideImage(.general) {
             return true
         }
         return super.validateUserInterfaceItem(item)
+    }
+
+    override func copy(_ sender: Any?) {
+        guard string.contains(NoteFormatting.marker) else { super.copy(sender); return }
+        guard selectedRange().length > 0 else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(NoteFormatting.selectedText(string, range: selectedRange()), forType: .string)
     }
 
     /// An image on the pasteboard becomes a token on its own line; everything
@@ -687,6 +770,7 @@ struct NoteTextView: NSViewRepresentable {
     /// alternative — comparing a freshly built NSColor and NSFont — is not
     /// reliably equal, so a full restyle ran on every re-render.
     var styleToken: String = ""
+    var editable: Bool = true
 
     static func bodyFont(_ size: CGFloat) -> NSFont { Ink.body(size) }
 
@@ -718,6 +802,7 @@ struct NoteTextView: NSViewRepresentable {
                             height: CGFloat.greatestFiniteMagnitude)
         tv.delegate = context.coordinator
         tv.isRichText = false
+        tv.isEditable = editable
         tv.allowsUndo = true
         tv.drawsBackground = false
         tv.font = Self.bodyFont(fontSize)
@@ -759,6 +844,7 @@ struct NoteTextView: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let tv = scroll.documentView as? NSTextView else { return }
+        tv.isEditable = editable
         context.coordinator.parent = self
         context.coordinator.synchronize(tv)
         Self.applyTextDirection(textDirection, to: tv)
@@ -878,6 +964,14 @@ struct NoteTextView: NSViewRepresentable {
             applyIncremental([previous, line], to: tv, invalidateCursors: false)
         }
 
+        func textView(_ textView: NSTextView, willChangeSelectionFromCharacterRange oldSelectedCharRange: NSRange,
+                      toCharacterRange newSelectedCharRange: NSRange) -> NSRange {
+            guard !isApplyingStyles, !textView.hasMarkedText(), let tv = textView as? TaskTextView else {
+                return newSelectedCharRange
+            }
+            return tv.selectionOutsideFormattingMarkers(newSelectedCharRange, from: oldSelectedCharRange)
+        }
+
         func textDidChange(_ notification: Notification) {
             guard !isApplyingStyles,
                   let tv = notification.object as? NSTextView else { return }
@@ -931,6 +1025,9 @@ struct NoteTextView: NSViewRepresentable {
                 return
             }
 
+            let viewport = EditorViewport(tv)
+            defer { viewport?.restore(in: tv) }
+
             let font = NoteTextView.bodyFont(parent.fontSize)
             let line = activeLine(in: tv)
             isApplyingStyles = true
@@ -983,6 +1080,9 @@ struct NoteTextView: NSViewRepresentable {
         /// Return on a task line starts the next task; on an empty one, ends the list.
         func textView(_ tv: NSTextView, shouldChangeTextIn range: NSRange,
                       replacementString replacement: String?) -> Bool {
+            // Custom checkbox/image actions also pass here; isEditable alone
+            // only stops AppKit's standard keyboard editing commands.
+            guard parent.editable && tv.isEditable else { return false }
             guard replacement == "\n" else { return true }
             let ns = tv.string as NSString
             guard range.location <= ns.length else { return true }
@@ -1102,6 +1202,7 @@ struct NoteEditorView: View {
         VStack(spacing: 0) {
             header
             if deck.findQuery != nil { findBar }
+            NoteFormattingBar(bridge: deck.bridge, foreground: pal.ink.opacity(0.8))
             NoteTextView(text: textBinding, ink: NSColor(pal.ink),
                          bridge: deck.bridge, autofocus: true,
                          fontSize: deck.fontSize,
@@ -1145,7 +1246,7 @@ struct NoteEditorView: View {
             .gesture(DragGesture(minimumDistance: 8, coordinateSpace: .global)
                 .onChanged { v in
                     if detaching {
-                        FloatingNote.shared.dragTo(NSEvent.mouseLocation)
+                        FloatingNotes.shared.dragTo(NSEvent.mouseLocation)
                     } else if (onRight ? -v.translation.width : v.translation.width) > 40 {
                         detaching = true
                         deck.isDragging = true
@@ -1195,6 +1296,10 @@ struct NoteEditorView: View {
             }
 
             Spacer(minLength: 6)
+            NoteWindowButtons(noteID: note.id) {
+                flush()
+                controller.collapseToRest()
+            }
             Text(store.unsavedIDs.contains(note.id)
                  ? L10n.text("note.not_saved")
                  : L10n.format("note.saved", Fmt.ago(note.modified)))

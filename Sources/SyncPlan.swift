@@ -91,6 +91,12 @@ enum SyncPlan {
 
         for note in notes {
             let known = index.entries[note.id]
+            // A local trash entry is a persistent tombstone even if the sync
+            // index is missing. Never publish it as a fresh note on the next pass.
+            if note.isTrashed {
+                if let file = remoteByID[note.id] { out.append(.deleteRemote(fileName: file.fileName)) }
+                continue
+            }
             guard let file = remoteByID[note.id] else {
                 guard let known else {
                     out.append(.push(noteID: note.id, existingFileName: nil))

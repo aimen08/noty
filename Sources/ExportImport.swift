@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 // MARK: - Archive format
 
 struct StickyArchive: Codable {
-    var version = 3
+    var version = 4
     var app = "Noty"
     var exported = Date()
     var notes: [StickyNote]
@@ -26,6 +26,9 @@ struct StickyNote: Codable {
     var order: Double
     var textDirection: NoteTextDirection?
     var pinned: Bool?
+    var project: String?
+    var tags: [String]?
+    var deletedAt: Date?
 
     init(_ n: Note) {
         id = n.id; title = n.title; body = n.body
@@ -34,13 +37,14 @@ struct StickyNote: Codable {
         archived = n.archived; order = n.order
         textDirection = n.textDirection
         pinned = n.pinned
+        project = n.project; tags = n.tags; deletedAt = n.deletedAt
     }
 
     var note: Note {
         Note(id: id, title: title,
              body: body, color: color, created: created, modified: modified,
              archived: archived, pinned: pinned ?? false, textDirection: textDirection ?? .automatic,
-             order: order)
+             order: order, project: project ?? "", tags: tags ?? [], deletedAt: deletedAt)
     }
 }
 
@@ -59,7 +63,7 @@ enum Transfer {
         NSApp.activate()
         switch format {
         case .markdown:  exportPerFile(notes, ext: "md",  render: markdownBody)
-        case .plainText: exportPerFile(notes, ext: "txt", render: { $0.body })
+        case .plainText: exportPerFile(notes, ext: "txt", render: { NoteFormatting.plainText($0.body) })
         case .singleFile: exportSingle(notes)
         case .stickies:  exportArchive(notes)
         }
@@ -112,7 +116,7 @@ enum Transfer {
             ## \(n.displayTitle)
             <!-- \(metadata) -->
 
-            \(Tasks.toMarkdown(n.body))
+            \(NoteFormatting.markdown(Tasks.toMarkdown(n.body)))
             """
         }.joined(separator: "\n\n---\n\n")
 
@@ -157,7 +161,7 @@ enum Transfer {
     }
 
     private static func markdownBody(_ n: Note) -> String {
-        let source = Tasks.toMarkdown(n.body)
+        let source = NoteFormatting.markdown(Tasks.toMarkdown(n.body))
         let lines = source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         let first = lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
         // Promote a bare first line to an H1 so the file reads as a document.
@@ -175,7 +179,7 @@ enum Transfer {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let archive = try decoder.decode(StickyArchive.self, from: data)
-        guard (1...3).contains(archive.version) else {
+        guard (1...4).contains(archive.version) else {
             throw PersistenceError.database(L10n.text("import.invalid_archive"))
         }
         guard archive.notes.allSatisfy({ NoteColor.all.indices.contains($0.color) }) else {
@@ -227,13 +231,14 @@ enum Transfer {
             }
         }
 
-        let added = NoteStore.shared.ingest(incoming)
-        if added < incoming.count { failed.append(L10n.text("storage.import_unsaved")) }
+        let result = NoteStore.shared.importNotes(incoming)
+        let summary = L10n.format("import.result", result.added, result.skipped)
+        if result.failed > 0 { failed.append(L10n.text("storage.import_unsaved")) }
         if failed.isEmpty {
-            alert(L10n.text("import.complete_title"), L10n.plural("import.added", added))
+            alert(L10n.text("import.complete_title"), summary)
         } else {
             alert(L10n.text("import.problems_title"),
-                  L10n.format("import.problems_body", L10n.plural("import.added", added),
+                  L10n.format("import.problems_body", summary,
                               failed.joined(separator: ", ")))
         }
     }

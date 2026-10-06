@@ -132,8 +132,10 @@ final class DeckController: NSObject {
         NoteStore.shared.$notes
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                guard let self, self.model.state == .rest else { return }
-                self.layout()
+                guard let self else { return }
+                if let id = self.model.state.expandedID,
+                   !NoteStore.shared.active.contains(where: { $0.id == id }) { self.collapse() }
+                if self.model.state == .rest { self.layout() }
             }
             .store(in: &bag)
     }
@@ -287,7 +289,9 @@ final class DeckController: NSObject {
             case .fan where idle > Settings.fanIdleTimeout:
                 self.collapse()
             case .expanded where idle > Settings.noteIdleTimeout && !self.openNoteIsPinned:
-                self.dismiss()
+                if self.model.bridge.textView?.hasMarkedText() == true || EditorInputPanels.isVisible {
+                    self.noteActivity()
+                } else { self.dismiss() }
             default: break
             }
         }
@@ -419,9 +423,9 @@ final class DeckController: NSObject {
         noteActivity()
         // Already floating somewhere on the screen — focus it there instead of
         // opening the same body in two editors.
-        if FloatingNote.shared.noteID == id {
+        if FloatingNotes.shared.contains(id: id) {
             NSLog("Noty: expand \(id.prefix(6)) routed to floating note")
-            FloatingNote.shared.focus(); return
+            FloatingNotes.shared.focus(id: id); return
         }
         model.openedHeight = Settings.noteSize.height
         model.openedTop = nil
@@ -464,14 +468,14 @@ final class DeckController: NSObject {
         let origin = NSPoint(x: onRight ? frame.maxX - size.width : frame.minX,
                              y: frame.maxY - top - size.height)
         model.detachingID = id
-        FloatingNote.shared.present(id: id, under: pointer,
+        FloatingNotes.shared.present(id: id, under: pointer,
                                     grabOffset: NSPoint(x: pointer.x - origin.x,
                                                         y: pointer.y - origin.y))
     }
 
     /// Mouse released: the note lives on the screen now, the deck steps back.
     func finishDetach() {
-        FloatingNote.shared.endDrag(cancelled: false)
+        FloatingNotes.shared.endDrag(cancelled: false)
         model.detachingID = nil
         setState(.fan)
     }
@@ -514,6 +518,14 @@ final class DeckController: NSObject {
                   self.panel.isKeyWindow else { return event }
             self.noteActivity()
 
+            if event.charactersIgnoringModifiers?.lowercased() == "f",
+               event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.control, .command] {
+                NoteStore.shared.flush(id: id)
+                self.collapseToRest()
+                FloatingNotes.shared.fullScreen(id: id)
+                return nil
+            }
+
             // Close first: while the find bar is up it takes the key instead.
             if Settings.scClose.matches(event) {
                 if self.model.findQuery != nil { self.model.findQuery = nil }
@@ -553,10 +565,20 @@ final class DeckController: NSObject {
     private func installOutsideMonitor() {
         guard outsideMonitor == nil else { return }
         outsideMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self, self.model.state.expandedID != nil,
+            matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self, let noteID = self.model.state.expandedID,
                   !self.openNoteIsPinned else { return }
-            DispatchQueue.main.async { self.dismiss() }
+            // Test immediately, before the picker disappears after inserting
+            // its character. Do not deactivate the app or steal first responder
+            // while the input service is committing text.
+            if EditorInputPanels.isInputClick(event) {
+                self.noteActivity()
+                return
+            }
+            DispatchQueue.main.async {
+                guard self.model.state.expandedID == noteID, !self.openNoteIsPinned else { return }
+                self.dismiss()
+            }
         }
     }
 
@@ -576,7 +598,11 @@ final class DeckController: NSObject {
         let menu = NSMenu()
         menu.addItem(withTitle: L10n.text("menu.new_note"), action: #selector(AppDelegate.newNote), keyEquivalent: "")
         menu.addItem(withTitle: L10n.text("menu.all_notes"), action: #selector(AppDelegate.openAllNotes), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("search.title"), action: #selector(AppDelegate.globalSearch), keyEquivalent: "")
         menu.addItem(withTitle: L10n.text("menu.archive"), action: #selector(AppDelegate.openArchive), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("organize.board"), action: #selector(AppDelegate.openBoard), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("organize.scope.trash"), action: #selector(AppDelegate.openTrash), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.text("organize.close_floating"), action: #selector(AppDelegate.closeFloatingNotes), keyEquivalent: "")
         menu.addItem(.separator())
 
         let overFS = NSMenuItem(title: L10n.text("menu.show_over_fullscreen"),

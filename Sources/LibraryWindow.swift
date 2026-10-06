@@ -2,46 +2,30 @@ import AppKit
 import SwiftUI
 import Combine
 
-enum LibraryMode: String, CaseIterable, Identifiable {
-    case all = "All Notes"
-    case archive = "Archive"
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .all: L10n.text("library.all_notes")
-        case .archive: L10n.text("library.archive")
-        }
-    }
-}
+typealias LibraryMode = NoteScope
 
 final class LibraryModel: ObservableObject {
-    @Published var mode: LibraryMode = .all
-    @Published var query = ""
-    @Published var selection: String?
+    @Published var criteria = NoteQuery()
+    @Published var selection = Set<String>()
     let bridge = EditorBridge()
 }
 
-/// "⌥⌘A opens every note in one window" — plus the archive, on ⌥⌘L.
 final class LibraryWindow: NSObject, NSWindowDelegate {
     static let shared = LibraryWindow()
     private var window: NSWindow?
     private let model = LibraryModel()
-
     var isOpen: Bool { window?.isVisible ?? false }
 
     func show(mode: LibraryMode) {
-        model.mode = mode
-        if model.selection == nil { model.selection = currentList().first?.id }
-
+        model.criteria = NoteQuery(scope: mode)
+        model.selection = []
         if window == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 580),
-                             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 680),
+                             styleMask: [.titled, .closable, .miniaturizable, .resizable],
                              backing: .buffered, defer: false)
             w.title = "Noty"
-            w.titlebarAppearsTransparent = true
             w.isReleasedWhenClosed = false
-            w.minSize = NSSize(width: 720, height: 420)
+            w.minSize = NSSize(width: 900, height: 520)
             w.delegate = self
             w.contentView = NSHostingView(rootView: LibraryView(model: model))
             w.center()
@@ -52,202 +36,181 @@ final class LibraryWindow: NSObject, NSWindowDelegate {
         window?.makeKeyAndOrderFront(nil)
     }
 
-    private func currentList() -> [Note] {
-        model.mode == .all ? NoteStore.shared.active : NoteStore.shared.archived
-    }
-
     func windowWillClose(_ notification: Notification) {
-        // Back to a menu-bar-less agent so the dock icon disappears again —
-        // unless Settings is still up.
-        DispatchQueue.main.async { NSApp.setActivationPolicy(.accessory) }
+        AppWindows.didClose(notification)
     }
 }
-
-// MARK: - View
 
 struct LibraryView: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject var store = NoteStore.shared
-
-    private var source: [Note] { model.mode == .all ? store.active : store.archived }
-
-    private var filtered: [Note] {
-        let q = model.query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !q.isEmpty else { return source }
-        return source.filter {
-            $0.displayTitle.lowercased().contains(q) || $0.body.lowercased().contains(q)
-        }
-    }
-
-    private var selected: Note? {
-        guard let id = model.selection else { return nil }
-        return store.note(id: id)
-    }
+    @State private var organizing = false
+    @State private var confirmingDeletion = false
+    private var filtered: [Note] { model.criteria.results(in: store.notes) }
+    private var selected: [Note] { filtered.filter { model.selection.contains($0.id) } }
+    private var ids: Set<String> { Set(selected.map(\.id)) }
+    private var inTrash: Bool { model.criteria.scope == .trash }
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-                .frame(width: 300)
-                .background(.regularMaterial)
+        VStack(spacing: 0) {
+            toolbar
             Divider()
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(minWidth: 720, minHeight: 420)
-        .onChange(of: model.mode) { _, _ in
-            model.selection = filtered.first?.id
-        }
-        .onAppear {
-            if model.selection == nil || store.note(id: model.selection!) == nil {
-                model.selection = filtered.first?.id
+            HStack(spacing: 0) {
+                sidebar.frame(width: 330).background(.regularMaterial)
+                Divider()
+                detail.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .onChange(of: filtered.map(\.id)) { _, visible in
+            model.selection.formIntersection(visible)
+        }
+        .sheet(isPresented: $organizing) { OrganizationSheet(notes: selected) }
+        .alert(L10n.text("organize.permanent_title"), isPresented: $confirmingDeletion) {
+            Button(L10n.text("organize.permanent"), role: .destructive) {
+                store.permanentlyDelete(ids: ids)
+            }
+            Button(L10n.text("organize.cancel"), role: .cancel) {}
+        } message: { Text(L10n.text("organize.permanent_message")) }
     }
 
-    // MARK: Sidebar
+    private var toolbar: some View {
+        HStack(spacing: 12) {
+            Button { let n = store.create(); model.criteria = NoteQuery(); model.selection = [n.id] } label: {
+                Label(L10n.text("menu.new_note"), systemImage: "plus")
+            }
+            Button { NoteBoardWindow.shared.show(ids: (selected.isEmpty ? filtered : selected).map(\.id)) } label: {
+                Label(L10n.text("organize.spread"), systemImage: "square.grid.2x2")
+            }.disabled(inTrash || filtered.isEmpty)
+            Spacer()
+            if !selected.isEmpty {
+                Text(L10n.format("organize.selected", selected.count)).foregroundStyle(.secondary)
+                if inTrash {
+                    Button(L10n.text("action.restore")) { store.restore(ids: ids) }
+                    Button(L10n.text("organize.permanent"), role: .destructive) { confirmingDeletion = true }
+                } else {
+                    Button(L10n.text("organize.edit")) { organizing = true }
+                    Menu {
+                        Button(L10n.text("action.archive")) { store.organize(ids: ids, archived: true) }
+                        Button(L10n.text("organize.unarchive")) { store.organize(ids: ids, archived: false) }
+                        Menu(L10n.text("help.pick_colour")) {
+                            ForEach(Array(NoteColor.all.enumerated()), id: \.offset) { i, color in
+                                Button(color.localizedName) { store.organize(ids: ids, color: i) }
+                            }
+                        }
+                        Button(L10n.text("organize.merge")) {
+                            if let merged = store.merge(ids: ids) {
+                                model.criteria = NoteQuery(); model.selection = [merged.id]
+                            }
+                        }.disabled(selected.count < 2)
+                        Button(L10n.text("organize.float")) { FloatingNotes.shared.open(ids: selected.map(\.id)) }
+                        Divider()
+                        exportButtons(selected)
+                    } label: { Label(L10n.text("organize.actions"), systemImage: "ellipsis.circle") }
+                    Button { store.trash(ids: ids) } label: { Image(systemName: "trash") }
+                        .help(L10n.text("organize.trash"))
+                }
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .padding(12)
+    }
 
     private var sidebar: some View {
-        VStack(spacing: 0) {
-            Picker("", selection: $model.mode) {
-                ForEach(LibraryMode.allCases) { Text($0.title).tag($0) }
+        VStack(spacing: 10) {
+            Picker("", selection: $model.criteria.scope) {
+                ForEach(NoteScope.allCases) { Text($0.title).tag($0) }
+            }.pickerStyle(.segmented)
+            TextField(L10n.text("organize.search"), text: $model.criteria.text)
+                .textFieldStyle(.roundedBorder)
+            HStack {
+                Menu {
+                    Button(L10n.text("organize.all_projects")) { model.criteria.project = nil }
+                    Button(L10n.text("organize.no_project")) { model.criteria.project = "" }
+                    ForEach(store.projects, id: \.self) { project in
+                        Button(project) { model.criteria.project = project }
+                    }
+                } label: { Text(model.criteria.project.map { $0.isEmpty ? L10n.text("organize.no_project") : $0 }
+                                ?? L10n.text("organize.all_projects")).lineLimit(1) }
+                Menu {
+                    Button(L10n.text("organize.all_tags")) { model.criteria.tag = nil }
+                    ForEach(store.tags, id: \.self) { tag in Button(tag) { model.criteria.tag = tag } }
+                } label: { Text(model.criteria.tag ?? L10n.text("organize.all_tags")).lineLimit(1) }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 12)
-            .padding(.top, 34)
-            .padding(.bottom, 8)
-
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                TextField(L10n.text("library.search_placeholder"), text: $model.query)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                if !model.query.isEmpty {
-                    Button { model.query = "" } label: {
-                        Image(systemName: "xmark.circle.fill").font(.system(size: 11))
-                    }.buttonStyle(.plain).foregroundStyle(.secondary)
-                }
+            HStack {
+                Menu {
+                    Button(L10n.text("organize.all_colors")) { model.criteria.color = nil }
+                    ForEach(Array(NoteColor.all.enumerated()), id: \.offset) { i, color in
+                        Button(color.localizedName) { model.criteria.color = i }
+                    }
+                } label: { Text(model.criteria.color.map { NoteColor.at($0).localizedName }
+                                ?? L10n.text("organize.all_colors")) }
+                Picker("", selection: $model.criteria.sort) {
+                    ForEach(NoteSort.allCases) { Text($0.title).tag($0) }
+                }.labelsHidden()
             }
-            .padding(.horizontal, 8)
-            .frame(height: 26)
-            .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.06)))
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
-
             if filtered.isEmpty {
-                VStack(spacing: 6) {
-                    Image(systemName: model.mode == .all ? "note.text" : "archivebox")
-                        .font(.system(size: 22)).foregroundStyle(.quaternary)
-                    Text(model.query.isEmpty
-                         ? (model.mode == .all
-                            ? L10n.text("library.no_notes")
-                            : L10n.text("library.no_archive"))
-                         : L10n.text("library.no_matches"))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView(L10n.text("library.no_matches"), systemImage: "tray")
             } else {
                 List(filtered, selection: $model.selection) { note in
                     row(note).tag(note.id)
-                }
-                .listStyle(.sidebar)
-                .scrollContentBackground(.hidden)
+                }.listStyle(.sidebar).scrollContentBackground(.hidden)
             }
-
             Divider()
-            HStack(spacing: 12) {
-                Button { NoteStore.shared.create() } label: {
-                    Label(L10n.text("menu.new_note"), systemImage: "plus").font(.system(size: 11.5))
-                }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
-
+            HStack {
+                Button(L10n.text("organize.select_all")) { model.selection = Set(filtered.map(\.id)) }
+                Spacer()
+                Text("\(filtered.count)").foregroundStyle(.secondary)
                 Menu {
-                    Button(L10n.text("export.markdown_per_note")) {
-                        Transfer.export(.markdown, notes: NoteStore.shared.notes)
-                    }
-                    Button(L10n.text("export.plain_per_note")) {
-                        Transfer.export(.plainText, notes: NoteStore.shared.notes)
-                    }
-                    Button(L10n.text("export.single_document")) {
-                        Transfer.export(.singleFile, notes: NoteStore.shared.notes)
-                    }
-                    Button(L10n.text("export.sticky_archive")) {
-                        Transfer.export(.stickies, notes: NoteStore.shared.notes)
-                    }
+                    exportButtons(store.living)
                     Divider()
                     Button(L10n.text("menu.import")) { Transfer.importFiles() }
-                } label: {
-                    Label(L10n.text("menu.export"), systemImage: "square.and.arrow.up").font(.system(size: 11.5))
-                }
-                .menuStyle(.borderlessButton)
-                .foregroundStyle(.secondary)
-                .fixedSize()
+                } label: { Image(systemName: "square.and.arrow.up") }
+            }.controlSize(.small)
+        }.padding(12)
+    }
 
-                Spacer()
-                Text("\(filtered.count)")
-                    .font(.system(size: 11).monospacedDigit())
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 32)
-        }
+    @ViewBuilder private func exportButtons(_ notes: [Note]) -> some View {
+        Button(L10n.text("export.markdown_per_note")) { Transfer.export(.markdown, notes: notes) }
+        Button(L10n.text("export.plain_per_note")) { Transfer.export(.plainText, notes: notes) }
+        Button(L10n.text("export.single_document")) { Transfer.export(.singleFile, notes: notes) }
+        Button(L10n.text("export.sticky_archive")) { Transfer.export(.stickies, notes: notes) }
     }
 
     private func row(_ note: Note) -> some View {
         HStack(spacing: 9) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(note.palette.dash)
-                .frame(width: 3.5, height: 30)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(note.displayTitle)
-                    .font(Ink.bodyFont(12.5).weight(.medium))
-                    .lineLimit(1)
-                HStack(spacing: 5) {
-                    Text(Fmt.ago(note.modified))
-                        .font(Ink.bodyFont(10)).foregroundStyle(.secondary)
-                    if let p = note.taskProgress {
-                        Label("\(p.done)/\(p.total)",
-                              systemImage: p.done == p.total ? "checkmark.circle.fill" : "circle")
-                            .font(Ink.bodyFont(9.5))
-                            .foregroundStyle(p.done == p.total ? Color.green : .secondary)
-                            .labelStyle(.titleAndIcon)
-                    }
-                    if !note.preview.isEmpty {
-                        Text(note.preview)
-                            .font(Ink.bodyFont(10)).foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                    }
+            RoundedRectangle(cornerRadius: 2).fill(note.palette.dash).frame(width: 4)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(note.displayTitle).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                    if note.archived { Image(systemName: "archivebox").foregroundStyle(.secondary) }
                 }
+                if !note.project.isEmpty || !note.tags.isEmpty {
+                    Text(([note.project].filter { !$0.isEmpty } + note.tags.map { "#" + $0 }).joined(separator: " · "))
+                        .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Text(note.preview).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                HStack {
+                    Text(Fmt.ago(note.modified))
+                    if let progress = note.taskProgress { Text("\(progress.done)/\(progress.total) ✓") }
+                }.font(.system(size: 10)).foregroundStyle(.tertiary)
             }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 3)
-        .contextMenu {
-            if note.archived {
-                Button(L10n.text("action.restore")) { NoteStore.shared.setArchived(id: note.id, false) }
-            } else {
-                Button(L10n.text("action.archive")) { NoteStore.shared.setArchived(id: note.id, true) }
-            }
-            Divider()
-            Button(L10n.text("action.delete")) { NoteStore.shared.delete(id: note.id) }
-        }
+        }.padding(.vertical, 4)
     }
 
-    // MARK: Detail
-
-    @ViewBuilder
-    private var detail: some View {
-        if let note = selected {
-            LibraryDetail(note: note, bridge: model.bridge)
-                .id(note.id)
+    @ViewBuilder private var detail: some View {
+        if selected.count == 1, let note = selected.first {
+            LibraryDetail(note: note, bridge: model.bridge).id(note.id)
         } else {
-            VStack(spacing: 8) {
-                Image(systemName: "sidebar.right").font(.system(size: 26)).foregroundStyle(.quaternary)
-                Text(L10n.text("library.select_note")).font(.system(size: 13)).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(nsColor: .textBackgroundColor))
+            VStack(spacing: 16) {
+                Image(systemName: selected.isEmpty ? "sidebar.right" : "square.stack.3d.up")
+                    .font(.system(size: 36)).foregroundStyle(.secondary)
+                Text(selected.isEmpty ? L10n.text("library.select_note") : L10n.format("organize.selected", selected.count))
+                Text(L10n.text("organize.selection_hint")).foregroundStyle(.secondary)
+                if selected.count > 1 && !inTrash {
+                    Button(L10n.text("organize.spread")) { NoteBoardWindow.shared.show(ids: selected.map(\.id)) }
+                }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
@@ -257,6 +220,7 @@ struct LibraryView: View {
 struct LibraryDetail: View {
     let note: Note
     let bridge: EditorBridge
+    @State private var organizing = false
 
     @ObservedObject private var store = NoteStore.shared
     private var text: String { store.note(id: note.id)?.body ?? "" }
@@ -286,6 +250,7 @@ struct LibraryDetail: View {
                         }
                     }
                 }
+                .disabled(note.isTrashed)
 
                 ZStack(alignment: .leading) {
                     if title.isEmpty {
@@ -297,6 +262,7 @@ struct LibraryDetail: View {
                     TextField("", text: titleBinding)
                         .textFieldStyle(.plain)
                         .lineLimit(1)
+                        .disabled(note.isTrashed)
                 }
                 .font(Ink.bodyFont(13).weight(.semibold))
                 .contextMenu {
@@ -316,8 +282,12 @@ struct LibraryDetail: View {
                                       foreground: .secondary) {
                     NoteStore.shared.setTextDirection(id: note.id, direction: $0)
                 }
+                .disabled(note.isTrashed)
 
-                if note.archived {
+                if note.isTrashed {
+                    Button(L10n.text("action.restore")) { store.restore(ids: [note.id]) }
+                        .controlSize(.small)
+                } else if note.archived {
                     Button(L10n.text("action.restore")) { NoteStore.shared.setArchived(id: note.id, false) }
                         .controlSize(.small)
                 } else {
@@ -330,19 +300,37 @@ struct LibraryDetail: View {
                     Image(systemName: "trash").font(.system(size: 11))
                 }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
+                .disabled(note.isTrashed)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 34)
+            .padding(.top, 12)
             .padding(.bottom, 10)
             .background(pal.dash.opacity(0.12))
 
+            HStack {
+                Text(([note.project].filter { !$0.isEmpty } + note.tags.map { "#" + $0 }).joined(separator: " · "))
+                    .lineLimit(2).foregroundStyle(.secondary)
+                Spacer()
+                Button(L10n.text("organize.edit")) { organizing = true }.disabled(note.isTrashed)
+                Button { FloatingNotes.shared.open(ids: [note.id]) } label: {
+                    Image(systemName: "rectangle.on.rectangle")
+                }.disabled(note.isTrashed).help(L10n.text("organize.float"))
+                NoteWindowButtons(noteID: note.id).disabled(note.isTrashed)
+            }.font(.system(size: 11)).controlSize(.small).padding(.horizontal, 16).padding(.vertical, 8)
+
+            NoteFormattingBar(bridge: bridge, foreground: pal.ink.opacity(0.8))
+                .disabled(note.isTrashed)
+                .background(pal.paper)
             NoteTextView(text: textBinding, ink: NSColor(pal.ink), bridge: bridge,
                          autofocus: false, fontSize: Settings.noteFontSize,
                          markdownEnabled: Settings.markdownStyling,
                          textDirection: note.textDirection,
-                         styleToken: "\(note.color)|\(Settings.noteFontSize)|\(Settings.noteFontName)|\(Settings.markdownStyling)")
+                         styleToken: "\(note.color)|\(Settings.noteFontSize)|\(Settings.noteFontName)|\(Settings.markdownStyling)",
+                         editable: !note.isTrashed)
                 .background(pal.paper)
+                .disabled(note.isTrashed)
         }
         .onDisappear { store.flush(id: note.id) }
+        .sheet(isPresented: $organizing) { OrganizationSheet(notes: [note]) }
     }
 }

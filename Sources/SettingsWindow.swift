@@ -142,6 +142,7 @@ final class SettingsModel: ObservableObject {
 
     @Published var scNewNote: Shortcut  { didSet { Settings.scNewNote = scNewNote; HotKeys.shared.reload() } }
     @Published var scAllNotes: Shortcut { didSet { Settings.scAllNotes = scAllNotes; HotKeys.shared.reload() } }
+    @Published var scGlobalSearch: Shortcut { didSet { Settings.scGlobalSearch = scGlobalSearch; HotKeys.shared.reload() } }
     @Published var scArchive: Shortcut  { didSet { Settings.scArchive = scArchive; HotKeys.shared.reload() } }
     @Published var scCapture: Shortcut  { didSet { Settings.scCapture = scCapture; HotKeys.shared.reload() } }
     // Handled by the open note itself, so these need no hotkey registration.
@@ -184,6 +185,7 @@ final class SettingsModel: ObservableObject {
         cloudSync = Settings.cloudSyncEnabled
         scNewNote = Settings.scNewNote
         scAllNotes = Settings.scAllNotes
+        scGlobalSearch = Settings.scGlobalSearch
         scArchive = Settings.scArchive
         scCapture = Settings.scCapture
         scArchiveNote = Settings.scArchiveNote
@@ -275,7 +277,7 @@ final class SettingsModel: ObservableObject {
     func duplicate(of s: Shortcut, ignoring label: String) -> Bool {
         guard s.isSet else { return false }
         let others = [("new", scNewNote), ("all", scAllNotes), ("archive", scArchive),
-                      ("capture", scCapture),
+                      ("capture", scCapture), ("search", scGlobalSearch),
                       ("archiveNote", scArchiveNote), ("close", scClose), ("find", scFind),
                       ("task", scTask), ("pin", scPin), ("colour", scColour),
                       ("delete", scDelete), ("bigger", scBigger), ("smaller", scSmaller)]
@@ -315,9 +317,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        DispatchQueue.main.async {
-            if LibraryWindow.shared.isOpen == false { NSApp.setActivationPolicy(.accessory) }
-        }
+        AppWindows.didClose(notification)
     }
 }
 
@@ -325,6 +325,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
+    @ObservedObject private var hotKeys = HotKeys.shared
 
     var body: some View {
         // One long scroll made twelve shortcut fields, nine deck controls and the
@@ -352,6 +353,7 @@ struct SettingsView: View {
         Section {
             shortcutRow(L10n.text("shortcut.new_note"), model.scNewNote, "new") { model.scNewNote = $0 }
             shortcutRow(L10n.text("shortcut.all_notes"), model.scAllNotes, "all") { model.scAllNotes = $0 }
+            shortcutRow(L10n.text("search.title"), model.scGlobalSearch, "search") { model.scGlobalSearch = $0 }
             shortcutRow(L10n.text("shortcut.archive_window"), model.scArchive, "archive") { model.scArchive = $0 }
             shortcutRow(L10n.text("shortcut.quick_capture"), model.scCapture, "capture") { model.scCapture = $0 }
         } header: {
@@ -644,6 +646,10 @@ struct SettingsView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 10)).foregroundStyle(.orange)
                         .help(L10n.text("shortcut.duplicate"))
+                } else if !bare && hotKeys.unavailableShortcuts.contains(value) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10)).foregroundStyle(.orange)
+                        .help(L10n.text("shortcut.unavailable"))
                 }
             }
         }

@@ -112,7 +112,11 @@ enum EditorStyleEngine {
                                      .paragraphStyle: paragraphStyle]
 
         guard let storage = textView.textStorage else { return [] }
-        let planned = normalizedStyleRanges(ranges, length: storage.length)
+        let explicitStyles = NoteFormatting.runs(in: storage.string)
+        // A manually formatted span can cross paragraphs as the user types.
+        // Keep its two boundaries consistent when either one is edited.
+        let planned = normalizedStyleRanges(explicitStyles.isEmpty ? ranges :
+            [NSRange(location: 0, length: storage.length)], length: storage.length)
         guard !planned.isEmpty else { return [] }
 
         for range in planned {
@@ -124,6 +128,7 @@ enum EditorStyleEngine {
             storage.removeAttribute(.obliqueness, range: range)
             storage.removeAttribute(.backgroundColor, range: range)
             storage.removeAttribute(.notyHidden, range: range)
+            storage.removeAttribute(.notyFormattingMarker, range: range)
             // Both belong to links. Styling is line-scoped, so an attribute left
             // behind when the syntax around it is deleted never gets cleaned up
             // by a later pass — the line would stay underlined and clickable.
@@ -140,6 +145,8 @@ enum EditorStyleEngine {
             }
             styleCompletedTasks(storage, fragment, offset: range.location,
                                 ink: ink, isCompletedTask: isCompletedTask)
+            // Toolbar formatting remains visible when Markdown preview is off.
+            NoteFormatting.apply(explicitStyles, to: storage, in: range, bodyFont: bodyFont)
             storage.endEditing()
 
             // Hidden markers require glyph regeneration, but only for the lines

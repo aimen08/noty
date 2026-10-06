@@ -77,6 +77,8 @@ terminal can talk to it:
 open "noty://new?text=Buy%20milk"   # create a note with this text
 open "noty://capture"               # open the quick-capture box
 open "noty://all"                   # the All Notes window
+open "noty://board"                 # spread active notes on the note wall
+open "noty://trash"                 # persistent Trash
 open "noty://settings"              # Settings
 ```
 
@@ -84,8 +86,8 @@ The text only ever becomes note content — nothing in a URL is executed.
 
 ## Shortcuts
 
-All of these are listed in Settings (`⌘,`), and the first four can be rebound
-there. Global ones are registered through the Carbon hotkey API, so **no
+All of these can be rebound in Settings (`⌘,`). Global ones are registered
+through the Carbon hotkey API, so **no
 Accessibility permission is required**:
 
 | | |
@@ -93,6 +95,7 @@ Accessibility permission is required**:
 | `⌥⌘N` | new note (opens it straight away) |
 | `⇧⌘Space` | quick capture — jot without opening the editor |
 | `⌥⌘A` | All Notes |
+| `⌥⌘F` | global search — type, use ↑/↓, press Return to open a note |
 | `⌥⌘L` | the Archive window |
 
 Inside a note:
@@ -103,7 +106,7 @@ Inside a note:
 | `⌘F` | find in note |
 | `⌘.` | cycle its colour |
 | `⌘T` | turn the current line into a task, or strip the checkbox off |
-| `⌘⌫` | delete, with ten seconds to undo |
+| `⌘⌫` | move to Trash, with ten seconds for immediate undo |
 | `⇧⌘A` | archive the note you are looking at |
 | — | every shortcut here can be rebound in Settings |
 | `⌘P` | pin the note so it stays open |
@@ -112,6 +115,20 @@ Inside a note:
 Standard editing (`⌘C` / `⌘V` / `⌘Z` / `⌘A`) works everywhere — the app builds a
 main menu at launch purely so those key equivalents dispatch, even though an
 accessory app draws no menu bar.
+
+## Text formatting
+
+The formatting bar is available in the edge note, All Notes, the note wall and
+floating notes. Select text to apply **bold** (`⌘B`), *italic* (`⌘I`), underline
+(`⌘U`), strikethrough (`⇧⌘X`) or a font size. With no selection, the command
+applies to the current paragraph. Formatting supports undo/redo and survives
+autosave, reopening, sync and `.stickies` backup. It remains visible when
+Markdown preview is disabled. Plain-text export/copy omits formatting markers;
+Markdown export uses inline HTML for these styles. Import uses `⇧⌘I`.
+
+The system emoji picker (`⌃⌘Space`) and input-method candidate windows are
+treated as part of editing: choosing a character keeps the edge note open.
+Clicking an unrelated application still dismisses an unpinned note.
 
 ## Checkbox tasks
 
@@ -142,7 +159,7 @@ token — `![image|300](noty-img://…)` — so sizes survive restarts and
 export/import.
 
 Images live as files under `~/Library/Application Support/Noty/Images/` and
-are deleted when the last note referencing them is deleted. `.stickies`
+are deleted when the last note referencing them is permanently deleted from Trash. `.stickies`
 export archives carry them as base64, so a round-trip keeps every picture.
 
 ## Everything else
@@ -155,8 +172,31 @@ export archives carry them as base64, so a round-trip keeps every picture.
   chips picks the destination — a fresh note, or appended to the end of an
   existing one (`⌘1` for new, `⌘2`… for the tabs); the box's paper colour
   previews where the text will land.
-- **All Notes** (`⌥⌘A`) — one window, search across every note body and title,
-  with an editable detail pane.
+- **Global Search** (`⌥⌘F`) — summon a compact search box from any app. Search
+  titles, visible text, projects and tags across active and archived notes.
+  With an empty query, browse recently modified notes. Use ↑/↓ and Return,
+  or click a result, to open its independent window; Esc dismisses the box.
+  Results show matching body context without internal style tags. Rebind the
+  shortcut in Settings; unavailable combinations are flagged there.
+- **All Notes** (`⌥⌘A`) — search active and archived notes together, including
+  titles, bodies, projects and tags. Switch to Active, Archive or Trash to narrow
+  the search. Multiple search words must all match; project, tag and colour
+  filters can be combined. Sort by deck order, last edit, creation date or title.
+- **Projects and tags** — choose *Organize* to assign a project and comma-separated
+  tags. A new project name creates a group; clearing it returns the note to
+  *No project*. These fields survive restarts, `.stickies` backup and iCloud sync.
+- **Batch organization** — Command-click, Shift-click or *Select all* in the
+  library, then organize, recolour, archive, restore, export or move to Trash.
+  Batch tagging can append to existing tags or replace them. *Merge* combines
+  the selected content and tags into a new note and moves the originals to Trash.
+- **Note wall** — *Spread notes* lays out the selected notes (or the filtered list
+  when nothing is selected) as editable cards. Change card width to fit more
+  columns and scroll for larger collections. The pill menu also opens a wall of
+  active notes. Open individual cards as independent floating windows.
+- **Persistent Trash** — deleted notes and their images remain recoverable across
+  restarts until explicitly permanently deleted. Batch delete can be immediately
+  undone as a group; after the toast disappears, restore from Trash. Permanent
+  deletion requires confirmation and is only available for trashed notes.
 - **Bidirectional text** — each note can follow its content automatically or be
   forced left-to-right or right-to-left from the direction menu in its header.
   The choice also applies in the All Notes editor and survives archive exports.
@@ -194,11 +234,19 @@ export archives carry them as base64, so a round-trip keeps every picture.
 - **Pull a note anywhere.** Grab the open note by its tab-gutter and drag it
   off the deck — it becomes a floating sticky wherever you drop it, draggable
   by its header, across displays, and resizable from any edge or corner. It
-  remembers the size you stretch it to. Idle a minute and it tucks itself back to
-  the edge, exactly like a note on the deck. Unpinned it stacks like any
-  window — other windows can cover it; pin it and it stays on top and never
-  tucks. One floats
-  at a time — pulling out a second tucks the first.
+  remembers the last floating size. Multiple notes can float at once, each with
+  its own editor, position and size. They stay open until explicitly closed or
+  moved to Trash. Unpinned windows can be covered; pinned windows stay on top.
+  Opening a floating note again focuses its existing window. *Close all floating
+  notes* returns them to the deck without deleting anything. Use the note wall
+  for a non-overlapping, scrollable layout of a larger collection.
+- **Maximize or full-screen any note.** Use the two window buttons in the deck,
+  library, wall or floating note. Maximize fills the current display's usable
+  area and toggles back to the previous size and position. Full screen opens
+  that note in its own macOS Space; use `⌃⌘F`, the exit button or `Esc` to leave.
+  Each note keeps its own window and editor. Closing a window saves the note
+  and returns it to the deck. Full-screen sizes never replace the default size
+  used for new floating notes.
 - **Hide the deck completely.** Settings → Deck: nothing shows at rest — no
   pill, no dashes. The edge strip still wakes the tabs on hover. Off by
   default.
@@ -209,12 +257,18 @@ export archives carry them as base64, so a round-trip keeps every picture.
 - **Closing a note steps back to the deck.** Esc, Close, archiving or deleting
   leaves the tabs where they were; only moving away from the edge puts the deck
   back to sleep. Clicking in another app dismisses the whole thing.
-- **Tidies itself away.** A fan left untouched collapses after 4 seconds; an open
-  note after a minute idle.
+- **Tidies itself away.** A fan left untouched collapses after 4 seconds; a note
+  still attached to the deck closes after a minute idle. Floating windows stay open.
 - **Export** — Markdown (one `.md` per note), plain text (one `.txt` per note),
   a single document, or a `.stickies` archive that preserves colours, archived
   state and dates. **Import** reads `.stickies` back, and will also take loose
   `.md` / `.txt` files.
+- **Import deduplication** — repeated imports skip exact matches (title, body,
+  project, tags and writing direction). Image content is compared across remapped
+  image IDs. Different content under the same note ID is kept as a separate note;
+  existing notes are never overwritten. Matches in Trash are skipped too.
+  Ordinary Markdown/TXT exports are text documents, while `.stickies` is the
+  format to use for preserving organization and embedded images.
 - **Sync to iPhone and iPad through iCloud Drive.** Settings → Sync. Each note
   becomes one Markdown file in iCloud Drive with a small header carrying its
   colour, dates and identity; open the folder in Files on the phone and edit
@@ -306,6 +360,12 @@ architectures, combines the resulting binaries with `lipo`, assembles the
 Sparkle is optional. Without `Sparkle/Sparkle.framework` the app still builds —
 `Updater.swift` compiles to a stub and the update menu says so.
 
+For isolated development, set `NOTY_DATA_DIR` to a disposable directory before
+launching the executable. Notes, images and sync index use that directory,
+preferences use a separate suite, and the cloud folder is redirected to its
+`Cloud/Noty` child. The regression test script sets this automatically so image
+cleanup and persistence tests cannot touch the user's regular Noty data.
+
 ### Branches
 
 `dev` is where work lands — every pull request targets it, and CI builds it.
@@ -383,6 +443,10 @@ Sources/
   DeckViews.swift       pill, fan, tabs, the 45 ms stagger
   NoteEditor.swift      NSTextView bridge, find, 250 ms autosave
   LibraryWindow.swift   All Notes / Archive
+  NoteOrganization.swift Search scopes, filters, ordering and import fingerprints
+  OrganizationSheet.swift Project and tag editing, including batch operations
+  NoteBoardWindow.swift Scrollable wall of simultaneously editable note cards
+  FloatingNotes.swift   Independent floating-window collection
   ExportImport.swift    md / txt / single file / .stickies
   NoteDocument.swift    the front-matter markdown form of a note
   CloudFolder.swift     the iCloud Drive folder: paths, names, coordinated I/O

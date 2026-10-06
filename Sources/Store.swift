@@ -64,6 +64,15 @@ final class Store {
             exec("ALTER TABLE notes ADD COLUMN text_direction TEXT NOT NULL DEFAULT 'automatic';")
             NSLog("Noty: migrated notes table — added text direction")
         }
+        if !existing.contains("project") {
+            exec("ALTER TABLE notes ADD COLUMN project TEXT NOT NULL DEFAULT '';")
+        }
+        if !existing.contains("tags") {
+            exec("ALTER TABLE notes ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';")
+        }
+        if !existing.contains("deleted_at") {
+            exec("ALTER TABLE notes ADD COLUMN deleted_at REAL;")
+        }
     }
 
     deinit { if let db { sqlite3_close_v2(db) } }
@@ -95,7 +104,7 @@ final class Store {
     private func readNotes() throws -> [Note] {
         var out: [Note] = []
         var st: OpaquePointer?
-        let sql = "SELECT id,title,body,color,created,modified,archived,sort_order,pinned,text_direction FROM notes ORDER BY sort_order ASC;"
+        let sql = "SELECT id,title,body,color,created,modified,archived,sort_order,pinned,text_direction,project,tags,deleted_at FROM notes ORDER BY sort_order ASC;"
         guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { throw databaseError() }
         defer { sqlite3_finalize(st) }
         var result = sqlite3_step(st)
@@ -115,6 +124,12 @@ final class Store {
             n.pinned = sqlite3_column_int(st, 8) != 0
             let rawDirection = sqlite3_column_text(st, 9).map { String(cString: $0) }
             n.textDirection = rawDirection.flatMap(NoteTextDirection.init(rawValue:)) ?? .automatic
+            n.project = sqlite3_column_text(st, 10).map { String(cString: $0) } ?? ""
+            let tags = sqlite3_column_text(st, 11).map { String(cString: $0) } ?? "[]"
+            n.tags = try JSONDecoder().decode([String].self, from: Data(tags.utf8))
+            if sqlite3_column_type(st, 12) != SQLITE_NULL {
+                n.deletedAt = Date(timeIntervalSince1970: sqlite3_column_double(st, 12))
+            }
             out.append(n)
             result = sqlite3_step(st)
         }
@@ -128,13 +143,14 @@ final class Store {
         if let failure { throw failure }
         guard NoteColor.all.indices.contains(n.color) else { throw PersistenceError.invalidColor }
         let sql = """
-        INSERT INTO notes (id,title,body,color,created,modified,archived,sort_order,pinned,text_direction)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO notes (id,title,body,color,created,modified,archived,sort_order,pinned,text_direction,project,tags,deleted_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(id) DO UPDATE SET
           title=excluded.title, body=excluded.body, color=excluded.color,
           modified=excluded.modified, archived=excluded.archived,
           sort_order=excluded.sort_order, pinned=excluded.pinned,
-          text_direction=excluded.text_direction;
+          text_direction=excluded.text_direction, project=excluded.project,
+          tags=excluded.tags, deleted_at=excluded.deleted_at;
         """
         var st: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { throw databaseError() }
@@ -152,6 +168,11 @@ final class Store {
         sqlite3_bind_double(st, 8, n.order)
         sqlite3_bind_int(st, 9, n.pinned ? 1 : 0)
         sqlite3_bind_text(st, 10, n.textDirection.rawValue, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_text(st, 11, n.project, -1, SQLITE_TRANSIENT)
+        let tags = String(decoding: try JSONEncoder().encode(n.tags), as: UTF8.self)
+        sqlite3_bind_text(st, 12, tags, -1, SQLITE_TRANSIENT)
+        if let date = n.deletedAt { sqlite3_bind_double(st, 13, date.timeIntervalSince1970) }
+        else { sqlite3_bind_null(st, 13) }
         if sqlite3_step(st) != SQLITE_DONE {
             throw databaseError()
         }
@@ -164,5 +185,19 @@ final class Store {
         defer { sqlite3_finalize(st) }
         sqlite3_bind_text(st, 1, id, -1, SQLITE_TRANSIENT)
         guard sqlite3_step(st) == SQLITE_DONE else { throw databaseError() }
+    }
+
+    /// Batch changes either all reach disk or none do (including merge + trash).
+    func transaction(upserting notes: [Note] = [], deleting ids: [String] = []) throws {
+        if let failure { throw failure }
+        guard sqlite3_exec(db, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK else { throw databaseError() }
+        do {
+            for note in notes { try upsert(note) }
+            for id in ids { try delete(id: id) }
+            guard sqlite3_exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK else { throw databaseError() }
+        } catch {
+            sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+            throw error
+        }
     }
 }
