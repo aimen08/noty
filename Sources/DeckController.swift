@@ -48,6 +48,14 @@ final class DeckModel: ObservableObject {
     @Published var noteSize = Settings.noteSize
     @Published var openOnHover: Bool = Settings.openOnHover
     @Published var tabPreview: Bool = Settings.tabPreview
+    @Published var edgeTitles: Bool = Settings.edgeTitleColumn
+    @Published var hideEdgeTabs: Bool = Settings.hideEdgeTabsWhenDocked
+
+    /// Tab cards along the edge hide only while a note is docked there.
+    /// Pulling the note off the edge brings them back before the docked sheet goes.
+    var edgeTabsHidden: Bool {
+        hideEdgeTabs && state.expandedID != nil && detachingID == nil
+    }
     /// Set while a tab is being dragged. The deck must not tidy itself away
     /// mid-drag just because the pointer strayed out of the edge strip.
     @Published var isDragging = false
@@ -75,6 +83,8 @@ final class DeckModel: ObservableObject {
         noteSize = Settings.noteSize
         openOnHover = Settings.openOnHover
         tabPreview = Settings.tabPreview
+        edgeTitles = Settings.edgeTitleColumn
+        hideEdgeTabs = Settings.hideEdgeTabsWhenDocked
     }
 }
 

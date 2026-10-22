@@ -42,11 +42,12 @@ struct DeckRootView: View {
 
             ZStack(alignment: onRight ? .topTrailing : .topLeading) {
 
-                if deck.fanVisible || h > lay.stackHeight {
+                if !deck.edgeTabsHidden && (deck.fanVisible || h > lay.stackHeight) {
                     FanColumn(deck: deck, controller: controller,
                               notes: visible, hiddenCount: showsMoreTab ? hiddenCount : 0,
                               layout: lay, onRight: onRight)
                         .padding(.top, fanTop(lay, panelHeight: h))
+                        .transition(.opacity)
                 }
 
                 PillView(notes: store.active)
@@ -74,6 +75,7 @@ struct DeckRootView: View {
                    alignment: onRight ? .topTrailing : .topLeading)
         }
         .animation(.spring(response: 0.30, dampingFraction: 0.9), value: deck.fanVisible)
+        .animation(.easeInOut(duration: 0.18), value: deck.edgeTabsHidden)
         .animation(.easeInOut(duration: 0.22), value: deck.style)
     }
 
