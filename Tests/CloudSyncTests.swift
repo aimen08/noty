@@ -18,6 +18,7 @@ enum CloudSyncTests {
         testFileNameSlugAndCollisions(check)
         testAParenthesisedTitleIsNotMistakenForAConflictCopy(check)
         testConflictCopiesLiveInASubdirectory(check)
+        testSameSecondConflictCopiesDoNotOverwrite(check)
         testCoordinatedFileIO(check)
         testPlaceholdersAreSeenAsUnresolved(check)
         testIndexPersistence(check)
@@ -240,6 +241,26 @@ enum CloudSyncTests {
               "the copy names the note it came from")
         check(CloudFolder.scan(in: dir).allNames.isEmpty,
               "a conflict copy must never be enumerated as a note document")
+    }
+
+    private static func testSameSecondConflictCopiesDoNotOverwrite(_ check: Check) {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("noty-conflict-same-second-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        check(CloudFolder.writeConflict("first version", named: "Shopping.md", in: dir, at: t0),
+              "the first losing version must be archived")
+        check(CloudFolder.writeConflict("second version", named: "Shopping.md", in: dir, at: t0),
+              "a later same-second conflict must also be archived")
+
+        let folder = dir.appendingPathComponent(CloudFolder.conflictsFolderName, isDirectory: true)
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        let versions = Set(names.compactMap {
+            try? String(contentsOf: folder.appendingPathComponent($0), encoding: .utf8)
+        })
+        check(names.count == 2 && versions == Set(["first version", "second version"]),
+              "same-second conflicts must preserve both distinct losing versions")
     }
 
     private static func testPlaceholdersAreSeenAsUnresolved(_ check: Check) {
