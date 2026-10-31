@@ -143,6 +143,10 @@
 "settings.deck.edge" = "边缘";
 "settings.deck.hover_open" = "悬停在标签上时打开便笺";
 "settings.deck.hover_open_help" = "指针停在标签上即可打开，无需点按。默认关闭。";
+"settings.deck.edge_titles" = "标题列显示所有便笺";
+"settings.deck.edge_titles_help" = "便笺贴在屏幕边缘时，标题列列出所有便笺，并突出当前这一张。点其他标题即可切换。默认关闭。";
+"settings.deck.hide_edge_tabs" = "贴边便笺打开时隐藏标签";
+"settings.deck.hide_edge_tabs_help" = "便笺窗口贴在屏幕边缘时，靠在边缘的标签卡自动隐藏。便笺收起或拖离边缘后，标签卡恢复。默认关闭。";
 "settings.deck.hover_preview" = "悬停时显示预览";
 "settings.deck.hover_preview_help" = "将指针悬停在标签上，无需打开即可预览内容。";
 "settings.deck.hide_pill" = "完全隐藏便笺栏";

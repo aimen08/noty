@@ -22,6 +22,8 @@ struct EditorStyleEngineTests {
         testLongNotePlanningStaysLocal()
         testTextDirectionConfiguration()
         testVerticalTabLabelLayout()
+        testEdgeTitleColumn()
+        testHideEdgeTabsWhileDocked()
         testLegacyArchiveDefaultsToAutomaticDirection()
         testTextDirectionDatabaseMigration()
         LocalizationTests.run { check($0, $1) }
@@ -147,6 +149,85 @@ struct EditorStyleEngineTests {
               "a squeezed vertical title must end with an ellipsis")
         check(fitted.reduce(0) { $0 + $1.advance } <= DeckGeom.tabGlyphAdvance * 2.5,
               "fitted vertical title must stay within its strip")
+    }
+
+    private static func testEdgeTitleColumn() {
+        let notes = [
+            EdgeTitleNote(id: "a", title: "Alpha"),
+            EdgeTitleNote(id: "b", title: "Bravo"),
+            EdgeTitleNote(id: "c", title: "中文"),
+        ]
+        let roomy = DeckGeom.pitchMax * 6
+        let off = EdgeTitleColumn.layout(notes: notes, currentID: "b",
+                                         height: roomy, enabled: false)
+        check(off.slots == [EdgeTitleSlot(id: "b", highlighted: true, height: roomy)]
+              && !off.scrolls,
+              "a closed title column keeps only the open note at full height")
+
+        let on = EdgeTitleColumn.layout(notes: notes, currentID: "b",
+                                        height: roomy, enabled: true)
+        check(on.slots.map(\.id) == ["a", "b", "c"] && !on.scrolls,
+              "an open title column lists every note in order")
+        check(on.slots.map(\.highlighted) == [false, true, false],
+              "only the open note is highlighted")
+        let sum = on.slots.reduce(0) { $0 + $1.height }
+        check(abs(sum - roomy) < 0.01, "fitted titles must fill the column, sum \(sum)")
+        check(zip(on.slots, notes).allSatisfy { slot, note in
+            slot.height + 0.01 >= EdgeTitleColumn.stripHeight(for: note.title)
+        }, "sharing leftover space must not squeeze a title below its strip")
+
+        let tight = EdgeTitleColumn.layout(notes: notes, currentID: "a",
+                                           height: DeckGeom.pitchMin * 2, enabled: true)
+        check(tight.scrolls && tight.slots.map(\.height) == notes.map {
+            EdgeTitleColumn.stripHeight(for: $0.title)
+        }, "titles that do not fit keep their own strips and scroll")
+        check(tight.slots.map(\.highlighted) == [true, false, false],
+              "the open note stays highlighted while the column scrolls")
+
+        let missing = EdgeTitleColumn.layout(notes: notes, currentID: "gone",
+                                             height: roomy, enabled: true)
+        check(missing.slots.allSatisfy { !$0.highlighted },
+              "a note that is not in the column is not highlighted")
+
+        let alone = EdgeTitleColumn.layout(
+            notes: [EdgeTitleNote(id: "a", title: String(repeating: "Long ", count: 40))],
+            currentID: "a", height: roomy, enabled: true)
+        check(alone.slots.count == 1 && !alone.scrolls
+              && abs(alone.slots[0].height - roomy) < 0.01
+              && alone.slots[0].highlighted,
+              "one long title still fills the column")
+    }
+
+    private static func testHideEdgeTabsWhileDocked() {
+        let deck = DeckModel()
+        deck.hideEdgeTabs = false
+        deck.state = .expanded("a")
+        check(!deck.edgeTabsHidden, "edge tabs stay while the preference is off")
+        check(deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: false),
+              "the column stays while tab cards are showing")
+
+        deck.hideEdgeTabs = true
+        deck.state = .rest
+        check(!deck.edgeTabsHidden, "edge tabs stay while the deck is at rest")
+        check(!deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: true),
+              "the column stays down when the fan is closed and the panel is short")
+        deck.state = .fan
+        check(!deck.edgeTabsHidden, "edge tabs stay while the deck is only fanned open")
+
+        deck.state = .expanded("a")
+        check(deck.edgeTabsHidden, "edge tabs hide while a docked note is showing")
+        check(deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: true),
+              "the new-note and settings buttons stay while edge tabs are hidden")
+        check(!deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: false),
+              "the column leaves when edge tabs and action buttons are both hidden")
+
+        deck.detachingID = "a"
+        check(!deck.edgeTabsHidden, "edge tabs return as soon as the note is pulled off the edge")
+        check(deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: false),
+              "pulling the note off the edge brings the tab column back")
+
+        deck.detachingID = nil
+        check(deck.edgeTabsHidden, "edge tabs hide again once the note is docked")
     }
 
     private struct LegacyStickyNote: Codable {
