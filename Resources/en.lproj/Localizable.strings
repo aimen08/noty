@@ -143,6 +143,10 @@
 "settings.deck.edge" = "Edge";
 "settings.deck.hover_open" = "Open a note by hovering its tab";
 "settings.deck.hover_open_help" = "Rest on a tab and it opens, no click needed. Off by default.";
+"settings.deck.edge_titles" = "Show every note in the title column";
+"settings.deck.edge_titles_help" = "While a note is docked to the screen edge, the title column lists every note and highlights the open one. Click another title to switch. Off by default.";
+"settings.deck.hide_edge_tabs" = "Hide edge tabs while a docked note is open";
+"settings.deck.hide_edge_tabs_help" = "While a note is docked to the screen edge, the tab cards along that edge hide. They return when the note closes or is pulled off the edge. Off by default.";
 "settings.deck.hover_preview" = "Show preview on hover";
 "settings.deck.hover_preview_help" = "Hover over a tab to peek at its contents without opening it.";
 "settings.deck.hide_pill" = "Hide the deck completely";

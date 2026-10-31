@@ -1113,11 +1113,30 @@ struct NoteEditorView: View {
     }
 
     /// The note's own tab, carried along so it reads as growing out of the deck.
-    ///
+    /// With the title-column preference on, the same strip lists every note.
+    private var gutter: some View {
+        gutterBody
+            .overlay(alignment: onRight ? .trailing : .leading) {
+                EdgeLine()
+                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+                    .foregroundStyle(pal.ink.opacity(0.22))
+                    .frame(width: 1)
+            }
+    }
+
+    @ViewBuilder
+    private var gutterBody: some View {
+        if deck.edgeTitles {
+            titleColumn
+        } else {
+            singleTitle
+        }
+    }
+
     /// `rotationEffect` is a render transform, not a layout one: a rotated label
     /// still *measures* at its unrotated width, so the tint has to be sized on its
     /// own and the label clipped into it, or the background bleeds across the note.
-    private var gutter: some View {
+    private var singleTitle: some View {
         Rectangle()
             .fill(pal.dash.opacity(0.20))
             .frame(width: DeckGeom.gutterWidth)
@@ -1132,33 +1151,126 @@ struct NoteEditorView: View {
                     .rotationEffect(.degrees(onRight ? 90 : -90))
             }
             .clipped()
-            .overlay(alignment: onRight ? .trailing : .leading) {
-                EdgeLine()
-                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-                    .foregroundStyle(pal.ink.opacity(0.22))
-                    .frame(width: 1)
-            }
-            // Grab the tab and pull the note off the deck: past the threshold
-            // the floating panel takes over under the cursor, and the sheet
-            // here hides but stays in the hierarchy — removing it would end
-            // this very gesture mid-drag.
-            .gesture(DragGesture(minimumDistance: 8, coordinateSpace: .global)
-                .onChanged { v in
-                    if detaching {
-                        FloatingNote.shared.dragTo(NSEvent.mouseLocation)
-                    } else if (onRight ? -v.translation.width : v.translation.width) > 40 {
-                        detaching = true
-                        deck.isDragging = true
-                        flush()
-                        controller.detachExpandedNote(at: NSEvent.mouseLocation)
-                    }
+            .gesture(detachGesture(requireHorizontal: false))
+    }
+
+    private var titleColumn: some View {
+        let active = store.active
+        let layout = EdgeTitleColumn.layout(
+            notes: active.map { EdgeTitleNote(id: $0.id, title: $0.displayTitle) },
+            currentID: note.id,
+            height: deck.noteSize.height,
+            enabled: true)
+        return fittedColumn(active: active, layout: layout)
+            .frame(width: DeckGeom.gutterWidth, height: deck.noteSize.height)
+            .clipped()
+    }
+
+    @ViewBuilder
+    private func fittedColumn(active: [Note], layout: EdgeTitleLayout) -> some View {
+        if layout.scrolls {
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    titleStack(active: active, layout: layout)
                 }
-                .onEnded { _ in
-                    guard detaching else { return }
-                    detaching = false
-                    deck.isDragging = false
-                    controller.finishDetach()
-                })
+                .onAppear { proxy.scrollTo(note.id, anchor: .center) }
+                .onChange(of: note.id) { _, id in
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
+        } else {
+            titleStack(active: active, layout: layout)
+        }
+    }
+
+    private func titleStack(active: [Note], layout: EdgeTitleLayout) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(active.enumerated()), id: \.element.id) { index, item in
+                if layout.slots.indices.contains(index) {
+                    titleSlot(item,
+                              height: layout.slots[index].height,
+                              highlighted: layout.slots[index].highlighted,
+                              showsDivider: index < active.count - 1)
+                }
+            }
+        }
+    }
+
+    /// Other notes sit on their own paper, dimmed. The open note keeps full
+    /// paper and a colour bar on the inner edge. Pulling that strip outward
+    /// still detaches the note; the gesture stays simultaneous so the column
+    /// can scroll.
+    @ViewBuilder
+    private func titleSlot(_ item: Note, height: CGFloat, highlighted: Bool,
+                           showsDivider: Bool) -> some View {
+        let slot = titleSlotChrome(item, height: height, highlighted: highlighted,
+                                   showsDivider: showsDivider)
+        if highlighted {
+            slot.simultaneousGesture(detachGesture(requireHorizontal: true))
+        } else {
+            slot
+        }
+    }
+
+    private func titleSlotChrome(_ item: Note, height: CGFloat, highlighted: Bool,
+                                 showsDivider: Bool) -> some View {
+        let ink = item.palette.ink
+        return ZStack {
+            item.palette.paper
+            if !highlighted {
+                Color.black.opacity(0.22)
+            }
+            VerticalTabLabel(title: item.displayTitle,
+                             strip: max(height, 1),
+                             onRight: onRight,
+                             ink: highlighted ? ink : ink.opacity(0.55))
+        }
+        .frame(width: DeckGeom.gutterWidth, height: height)
+        .overlay(alignment: .bottom) {
+            if showsDivider {
+                Rectangle().fill(Color.black.opacity(0.12)).frame(height: 0.5)
+            }
+        }
+        .overlay(alignment: onRight ? .leading : .trailing) {
+            if highlighted {
+                Rectangle().fill(item.palette.dash).frame(width: 3)
+            }
+        }
+        .contentShape(Rectangle())
+        .help(item.displayTitle)
+        .id(item.id)
+        .onTapGesture {
+            guard item.id != note.id else { return }
+            flush()
+            controller.expand(item.id)
+        }
+    }
+
+    /// Grab the tab and pull the note off the deck: past the threshold the
+    /// floating panel takes over under the cursor, and the sheet here hides
+    /// but stays in the hierarchy — removing it would end this very gesture
+    /// mid-drag. Horizontal-only lets a scrolling title column keep its scroll.
+    private func detachGesture(requireHorizontal: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
+            .onChanged { v in
+                let pull = onRight ? -v.translation.width : v.translation.width
+                let outward = pull > 40 && (!requireHorizontal
+                    || abs(v.translation.width) > abs(v.translation.height))
+                if detaching {
+                    FloatingNote.shared.dragTo(NSEvent.mouseLocation)
+                } else if outward {
+                    detaching = true
+                    deck.isDragging = true
+                    flush()
+                    controller.detachExpandedNote(at: NSEvent.mouseLocation)
+                }
+            }
+            .onEnded { _ in
+                guard detaching else { return }
+                detaching = false
+                deck.isDragging = false
+                controller.finishDetach()
+            }
     }
 
     private var header: some View {
