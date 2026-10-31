@@ -56,6 +56,14 @@ final class DeckModel: ObservableObject {
     var edgeTabsHidden: Bool {
         hideEdgeTabs && state.expandedID != nil && detachingID == nil
     }
+
+    /// The column stays up for the plus and settings buttons when those are
+    /// enabled. Hiding tab cards must not take the buttons with them.
+    func showsEdgeColumn(panelTallerThanStack: Bool, showsActions: Bool) -> Bool {
+        let room = fanVisible || panelTallerThanStack
+        return room && (!edgeTabsHidden || showsActions)
+    }
+
     /// Set while a tab is being dragged. The deck must not tidy itself away
     /// mid-drag just because the pointer strayed out of the edge strip.
     @Published var isDragging = false

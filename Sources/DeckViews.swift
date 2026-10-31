@@ -42,7 +42,8 @@ struct DeckRootView: View {
 
             ZStack(alignment: onRight ? .topTrailing : .topLeading) {
 
-                if !deck.edgeTabsHidden && (deck.fanVisible || h > lay.stackHeight) {
+                if deck.showsEdgeColumn(panelTallerThanStack: h > lay.stackHeight,
+                                        showsActions: lay.showsActions) {
                     FanColumn(deck: deck, controller: controller,
                               notes: visible, hiddenCount: showsMoreTab ? hiddenCount : 0,
                               layout: lay, onRight: onRight)
@@ -193,7 +194,9 @@ struct FanColumn: View {
                     stack
                 }
             }
-            .overlay(alignment: onRight ? .trailing : .leading) { spine }
+            .overlay(alignment: onRight ? .trailing : .leading) {
+                spine.opacity(deck.edgeTabsHidden ? 0 : 1)
+            }
 
             if let previewNote = activePreviewNote {
                 NotePreviewCard(note: previewNote, onRight: onRight, onHoverChanged: { inside in
@@ -240,6 +243,9 @@ struct FanColumn: View {
     private var stack: some View {
         let total = notes.count + (hiddenCount > 0 ? 1 : 0) + (layout.showsActions ? 2 : 0)
         return VStack(spacing: layout.spacing) {
+            // Fade the cards in place. Removing them would slide plus and cog
+            // up into the space the open note covers.
+            Group {
             if notes.isEmpty {
                 EmptyTab(height: layout.itemHeight, strip: layout.pitch, onRight: onRight) {
                     (NSApp.delegate as? AppDelegate)?.newNote()
@@ -307,6 +313,9 @@ struct FanColumn: View {
                 .padding(.top, layout.moreGap - layout.spacing)   // undo the lap
                 .staged(index: notes.count, total: total, revealed: isRevealed, onRight: onRight)
             }
+            }
+            .opacity(deck.edgeTabsHidden ? 0 : 1)
+            .allowsHitTesting(!deck.edgeTabsHidden)
             if layout.showsActions {
                 PlusButton { (NSApp.delegate as? AppDelegate)?.newNote() }
                     .padding(.top, DeckGeom.plusGap - layout.spacing)

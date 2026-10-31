@@ -203,18 +203,28 @@ struct EditorStyleEngineTests {
         deck.hideEdgeTabs = false
         deck.state = .expanded("a")
         check(!deck.edgeTabsHidden, "edge tabs stay while the preference is off")
+        check(deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: false),
+              "the column stays while tab cards are showing")
 
         deck.hideEdgeTabs = true
         deck.state = .rest
         check(!deck.edgeTabsHidden, "edge tabs stay while the deck is at rest")
+        check(!deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: true),
+              "the column stays down when the fan is closed and the panel is short")
         deck.state = .fan
         check(!deck.edgeTabsHidden, "edge tabs stay while the deck is only fanned open")
 
         deck.state = .expanded("a")
         check(deck.edgeTabsHidden, "edge tabs hide while a docked note is showing")
+        check(deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: true),
+              "the new-note and settings buttons stay while edge tabs are hidden")
+        check(!deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: false),
+              "the column leaves when edge tabs and action buttons are both hidden")
 
         deck.detachingID = "a"
         check(!deck.edgeTabsHidden, "edge tabs return as soon as the note is pulled off the edge")
+        check(deck.showsEdgeColumn(panelTallerThanStack: false, showsActions: false),
+              "pulling the note off the edge brings the tab column back")
 
         deck.detachingID = nil
         check(deck.edgeTabsHidden, "edge tabs hide again once the note is docked")
