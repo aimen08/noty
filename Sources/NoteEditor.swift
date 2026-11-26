@@ -342,7 +342,7 @@ final class TaskTextView: NSTextView {
                     storage.replaceCharacters(in: lineRange, with: newLine)
                     didChangeText()
                     let diff = (newLine as NSString).length - lineRange.length
-                    setSelectedRange(NSRange(location: max(0, sel.location + diff), length: 0))
+                    setSelectedRange(NSRange(location: max(lineRange.location, sel.location + diff), length: 0))
                     return true
                 }
             } else {
@@ -385,7 +385,7 @@ final class TaskTextView: NSTextView {
                         storage.replaceCharacters(in: lineRange, with: newLine)
                         didChangeText()
                         let diff = (newLine as NSString).length - lineRange.length
-                        setSelectedRange(NSRange(location: max(0, sel.location + diff), length: 0))
+                        setSelectedRange(NSRange(location: max(lineRange.location, sel.location + diff), length: 0))
                         return true
                     }
                 } else if !indent.isEmpty {
@@ -405,7 +405,7 @@ final class TaskTextView: NSTextView {
                     if shouldChangeText(in: lineRange, replacementString: newLine) {
                         storage.replaceCharacters(in: lineRange, with: newLine)
                         didChangeText()
-                        setSelectedRange(NSRange(location: max(0, sel.location - removedCount), length: 0))
+                        setSelectedRange(NSRange(location: max(lineRange.location, sel.location - removedCount), length: 0))
                         return true
                     }
                 }
@@ -425,7 +425,7 @@ final class TaskTextView: NSTextView {
                 if shouldChangeText(in: lineRange, replacementString: newLine) {
                     storage.replaceCharacters(in: lineRange, with: newLine)
                     didChangeText()
-                    setSelectedRange(NSRange(location: max(0, sel.location + 2), length: 0))
+                    setSelectedRange(NSRange(location: max(lineRange.location, sel.location + 2), length: 0))
                     return true
                 }
             } else if !indent.isEmpty {
@@ -445,7 +445,7 @@ final class TaskTextView: NSTextView {
                 if shouldChangeText(in: lineRange, replacementString: newLine) {
                     storage.replaceCharacters(in: lineRange, with: newLine)
                     didChangeText()
-                    setSelectedRange(NSRange(location: max(0, sel.location - removedCount), length: 0))
+                    setSelectedRange(NSRange(location: max(lineRange.location, sel.location - removedCount), length: 0))
                     return true
                 }
             }
@@ -474,7 +474,7 @@ final class TaskTextView: NSTextView {
                 if shouldChangeText(in: lineRange, replacementString: newLine) {
                     storage.replaceCharacters(in: lineRange, with: newLine)
                     didChangeText()
-                    setSelectedRange(NSRange(location: max(0, sel.location - removedCount), length: 0))
+                    setSelectedRange(NSRange(location: max(lineRange.location, sel.location - removedCount), length: 0))
                     return true
                 }
             }

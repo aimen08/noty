@@ -90,7 +90,7 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     func endDrag(cancelled: Bool) {
         if cancelled { tuck(animated: false); return }
         lastActivity = Date()
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         panel?.makeKeyAndOrderFront(nil)
         panel?.orderFrontRegardless()
         applyLevel()
@@ -126,7 +126,7 @@ final class FloatingNote: NSObject, NSWindowDelegate {
             return
         }
         NSLog("Noty: focus lift  visible=\(panel.isVisible) level=\(panel.level.rawValue)")
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         panel.level = NSWindow.Level(rawValue: topLevel.rawValue + 1)
         panel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)

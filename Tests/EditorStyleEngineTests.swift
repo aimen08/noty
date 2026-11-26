@@ -644,6 +644,15 @@ struct EditorStyleEngineTests {
         tv7.setSelectedRange(NSRange(location: (tv7.string as NSString).length, length: 0))
         tv7.insertTab(nil)
         check(tv7.string == "Plain text  ", "Tab on plain text should insert 2 spaces, got '\(tv7.string)'")
+
+        // Shift+Tab with the caret inside the indent must keep it on that line,
+        // not step back into the one above.
+        let tv8 = makeTaskTextView("abc\n  foo")
+        tv8.setSelectedRange(NSRange(location: 4, length: 0))
+        tv8.insertBacktab(nil)
+        check(tv8.string == "abc\nfoo", "Shift+Tab should outdent '  foo', got '\(tv8.string)'")
+        check(tv8.selectedRange().location == 4,
+              "Shift+Tab caret must stay on its line, got \(tv8.selectedRange().location)")
     }
 
     private static func makeTextView(_ source: String) -> NSTextView {
