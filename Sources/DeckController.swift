@@ -779,6 +779,7 @@ final class DeckManager {
         decks.values.forEach {
             $0.model.syncPreferences(); $0.refreshLevel(); $0.layout(); $0.applyRestingState()
         }
+        FloatingNote.shared.applyLevel()
     }
 
     /// Deck on the screen holding the pointer, else the first available deck.

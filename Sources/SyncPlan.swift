@@ -130,8 +130,9 @@ enum SyncPlan {
         }
 
         // Identified files with no note behind them.
+        let adoptedSet = Set(adoptions)
         for file in remote.sorted(by: { $0.fileName < $1.fileName }) {
-            guard let id = file.noteID, !localIDs.contains(id) else { continue }
+            guard let id = file.noteID, !localIDs.contains(id), !adoptedSet.contains(file.fileName) else { continue }
             out.append(index.entries[id] == nil ? .pull(fileName: file.fileName)
                                                 : .deleteRemote(fileName: file.fileName))
         }

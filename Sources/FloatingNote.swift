@@ -36,7 +36,7 @@ final class FloatingNote: NSObject, NSWindowDelegate {
         p.isOpaque = false
         p.backgroundColor = .clear
         p.hasShadow = true
-        p.level = .floating
+        p.level = NSWindow.Level(rawValue: topLevel.rawValue + 1)
         p.collectionBehavior = Settings.confineToSpace
             ? [.fullScreenAuxiliary] : [.canJoinAllSpaces, .fullScreenAuxiliary]
         p.isReleasedWhenClosed = false
@@ -65,6 +65,16 @@ final class FloatingNote: NSObject, NSWindowDelegate {
         Settings.floatingNoteSize = panel.frame.size
     }
 
+    func windowDidBecomeKey(_ notification: Notification) {
+        lastActivity = Date()
+        applyLevel()
+        panel?.orderFrontRegardless()
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        applyLevel()
+    }
+
     /// Where inside the note the user grabbed it, so the paper does not jump
     /// under the cursor when the panel takes over from the deck.
     private var grabOffset = NSPoint.zero
@@ -80,26 +90,35 @@ final class FloatingNote: NSObject, NSWindowDelegate {
     func endDrag(cancelled: Bool) {
         if cancelled { tuck(animated: false); return }
         lastActivity = Date()
-        applyLevel()
+        NSApp.activate(ignoringOtherApps: true)
         panel?.makeKeyAndOrderFront(nil)
+        panel?.orderFrontRegardless()
+        applyLevel()
     }
 
-    /// The pin decides the altitude. Unpinned, the note is an ordinary window —
-    /// covered when you work elsewhere, raised when you click it. Pinned, it
-    /// stays above everything, the way a sticky stuck to the bezel would.
-    /// During the pull itself the panel stays at .floating regardless, so it
-    /// cannot slide underneath the deck's own panel mid-drag.
+    private var topLevel: NSWindow.Level {
+        Settings.showOverFullScreen ? .statusBar : .floating
+    }
+
+    /// The pin and focus decide the altitude. Unpinned, the note is an ordinary window —
+    /// covered when you work elsewhere, raised when you click/focus it. Pinned, it
+    /// stays above everything, matching showOverFullScreen (.statusBar or .floating).
     func applyLevel() {
         guard let panel, let id = noteID else { return }
         let pinned = NoteStore.shared.note(id: id)?.pinned ?? false
-        let level: NSWindow.Level = pinned ? .floating : .normal
+        let isFocused = panel.isKeyWindow
+        let level: NSWindow.Level
+        if isFocused {
+            level = NSWindow.Level(rawValue: topLevel.rawValue + 1)
+        } else if pinned {
+            level = topLevel
+        } else {
+            level = .normal
+        }
         if panel.level != level { panel.level = level }
     }
 
-    /// Clicking the note's tab on the deck lands here. The note may be an
-    /// unpinned normal-level window buried under the active app, and a plain
-    /// makeKey only fronts it within Noty — orderFrontRegardless is what lifts
-    /// it above the app you are actually in.
+    /// Focus or refocus the floating note, lifting it above all other windows.
     func focus() {
         lastActivity = Date()
         guard let panel else {
@@ -107,16 +126,10 @@ final class FloatingNote: NSObject, NSWindowDelegate {
             return
         }
         NSLog("Noty: focus lift  visible=\(panel.isVisible) level=\(panel.level.rawValue)")
-        // Front-of-level for a background app's normal-level window is the
-        // flaky corner of AppKit ordering. Lift at floating level so the raise
-        // is unambiguous, then settle back to whatever the pin says once the
-        // window is up — a click elsewhere can cover an unpinned note again.
-        panel.level = .floating
+        NSApp.activate(ignoringOtherApps: true)
+        panel.level = NSWindow.Level(rawValue: topLevel.rawValue + 1)
         panel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-            self?.applyLevel()
-        }
     }
 
     // MARK: Tucking back
@@ -191,6 +204,7 @@ final class FloatingNote: NSObject, NSWindowDelegate {
 /// into is a screenshot.
 private final class FloatingPanel: NSPanel {
     override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
 }
 
 /// The note's paper, free of the deck. Same editor, same autosave; the header

@@ -155,7 +155,9 @@ final class TaskTextView: NSTextView {
 
     override func insertTab(_ sender: Any?) {
         if handleTabIndentation(shift: false) { return }
-        super.insertTab(sender)
+        if shouldChangeText(in: selectedRange(), replacementString: "  ") {
+            insertText("  ", replacementRange: selectedRange())
+        }
     }
 
     override func insertBacktab(_ sender: Any?) {
@@ -272,6 +274,25 @@ final class TaskTextView: NSTextView {
         return numberStr
     }
 
+    private func previousOrderedListNumber(before location: Int, in ns: NSString) -> (number: String, indent: String)? {
+        let pattern = try! NSRegularExpression(pattern: "^([ \\t]*)((?:\\d+\\.)*\\d+)[.)][ \\t]+(.*)$")
+        var loc = location
+        while loc > 0 {
+            let (lineRange, lineText) = lineContentRange(for: loc - 1, in: ns)
+            let trimmed = lineText.trimmingCharacters(in: .whitespaces)
+            if !trimmed.isEmpty {
+                if let match = pattern.firstMatch(in: lineText, range: NSRange(location: 0, length: (lineText as NSString).length)) {
+                    let indent = (lineText as NSString).substring(with: match.range(at: 1))
+                    let num = (lineText as NSString).substring(with: match.range(at: 2))
+                    return (number: num, indent: indent)
+                }
+                return nil
+            }
+            loc = lineRange.location
+        }
+        return nil
+    }
+
     private func handleTabIndentation(shift: Bool) -> Bool {
         guard let storage = textStorage else { return false }
         let ns = string as NSString
@@ -279,16 +300,44 @@ final class TaskTextView: NSTextView {
         let (lineRange, lineText) = lineContentRange(for: sel.location, in: ns)
 
         // Check if current line is an ordered list (e.g. "1. " -> "1.1 " on Tab, "1.1 " -> "1. " on Shift+Tab)
-        let orderedPattern = try! NSRegularExpression(pattern: "^([ \\t]*)((?:\\d+\\.)*\\d+)[.)][ \\t]+(.*)$")
+        let orderedPattern = try! NSRegularExpression(pattern: "^([ \\t]*)((?:\\d+\\.)*\\d+)([.)])([ \\t]+)(.*)$")
         if let match = orderedPattern.firstMatch(in: lineText, range: NSRange(location: 0, length: (lineText as NSString).length)) {
             let indent = (lineText as NSString).substring(with: match.range(at: 1))
             let numStr = (lineText as NSString).substring(with: match.range(at: 2))
-            let rest = (lineText as NSString).substring(with: match.range(at: 3))
+            let delimiter = (lineText as NSString).substring(with: match.range(at: 3))
+            let separator = (lineText as NSString).substring(with: match.range(at: 4))
+            let rest = (lineText as NSString).substring(with: match.range(at: 5))
+
+            let prev = previousOrderedListNumber(before: lineRange.location, in: ns)
+            let currParts = numStr.split(separator: ".").map(String.init)
+            let currLevel = currParts.count
 
             if !shift {
-                // Tab: create deeper sub-level (1. -> 1.1., 1.1 -> 1.1.1.)
-                let newNum = numStr + ".1"
-                let newLine = "\(indent)\(newNum). \(rest)"
+                // Tab: create deeper sub-level (e.g. "2." under "1." becomes "1.1")
+                let targetLevel = currLevel + 1
+                let newNum: String
+                if let prev {
+                    let prevParts = prev.number.split(separator: ".").map(String.init)
+                    let prevLevel = prevParts.count
+                    if targetLevel > prevLevel {
+                        var parts = prevParts
+                        while parts.count < targetLevel {
+                            parts.append("1")
+                        }
+                        newNum = parts.joined(separator: ".")
+                    } else {
+                        var prefixParts = Array(prevParts.prefix(targetLevel))
+                        if let last = prefixParts.last, let val = Int(last) {
+                            prefixParts[prefixParts.count - 1] = String(val + 1)
+                        }
+                        newNum = prefixParts.joined(separator: ".")
+                    }
+                } else {
+                    newNum = numStr + ".1"
+                }
+
+                let newIndent = indent + "  "
+                let newLine = "\(newIndent)\(newNum)\(delimiter)\(separator)\(rest)"
                 if shouldChangeText(in: lineRange, replacementString: newLine) {
                     storage.replaceCharacters(in: lineRange, with: newLine)
                     didChangeText()
@@ -297,12 +346,41 @@ final class TaskTextView: NSTextView {
                     return true
                 }
             } else {
-                // Shift+Tab: pop out of sub-level (1.1.1 -> 1.1, 1.1 -> 1)
-                var parts = numStr.split(separator: ".").map(String.init)
-                if parts.count > 1 {
-                    parts.removeLast()
-                    let newNum = parts.joined(separator: ".")
-                    let newLine = "\(indent)\(newNum). \(rest)"
+                // Shift+Tab: pop out of sub-level (e.g. "1.1" -> "2.", "1.2.1" -> "1.3")
+                if currLevel > 1 {
+                    let targetLevel = currLevel - 1
+                    let newNum: String
+                    if let prev {
+                        let prevParts = prev.number.split(separator: ".").map(String.init)
+                        if prevParts.count >= targetLevel {
+                            var prefixParts = Array(prevParts.prefix(targetLevel))
+                            if let last = prefixParts.last, let val = Int(last) {
+                                prefixParts[prefixParts.count - 1] = String(val + 1)
+                            }
+                            newNum = prefixParts.joined(separator: ".")
+                        } else {
+                            var parts = currParts
+                            parts.removeLast()
+                            newNum = parts.joined(separator: ".")
+                        }
+                    } else {
+                        var parts = currParts
+                        parts.removeLast()
+                        newNum = parts.joined(separator: ".")
+                    }
+
+                    let newIndent: String
+                    if indent.hasPrefix("  ") {
+                        newIndent = String(indent.dropFirst(2))
+                    } else if indent.hasPrefix("\t") {
+                        newIndent = String(indent.dropFirst(1))
+                    } else if indent.hasPrefix(" ") {
+                        newIndent = String(indent.dropFirst(1))
+                    } else {
+                        newIndent = ""
+                    }
+
+                    let newLine = "\(newIndent)\(newNum)\(delimiter)\(separator)\(rest)"
                     if shouldChangeText(in: lineRange, replacementString: newLine) {
                         storage.replaceCharacters(in: lineRange, with: newLine)
                         didChangeText()
@@ -310,12 +388,32 @@ final class TaskTextView: NSTextView {
                         setSelectedRange(NSRange(location: max(0, sel.location + diff), length: 0))
                         return true
                     }
+                } else if !indent.isEmpty {
+                    let newIndent: String
+                    let removedCount: Int
+                    if indent.hasPrefix("\t") {
+                        newIndent = String(indent.dropFirst(1))
+                        removedCount = 1
+                    } else if indent.hasPrefix("  ") {
+                        newIndent = String(indent.dropFirst(2))
+                        removedCount = 2
+                    } else {
+                        newIndent = String(indent.dropFirst(1))
+                        removedCount = 1
+                    }
+                    let newLine = "\(newIndent)\(numStr)\(delimiter)\(separator)\(rest)"
+                    if shouldChangeText(in: lineRange, replacementString: newLine) {
+                        storage.replaceCharacters(in: lineRange, with: newLine)
+                        didChangeText()
+                        setSelectedRange(NSRange(location: max(0, sel.location - removedCount), length: 0))
+                        return true
+                    }
                 }
             }
         }
 
         // Bullet list or task item: adjust leading spaces/tabs on Tab / Shift+Tab
-        let bulletOrTaskPattern = try! NSRegularExpression(pattern: "^([ \\t]*)([-*+]|[\u{2610}\u{2611}]|- \\[[ xX]\\])[ \\t]+(.*)$")
+        let bulletOrTaskPattern = try! NSRegularExpression(pattern: "^([ \\t]*)([-*+]|[☐☑]|- \\[[ xX]\\])[ \\t]+(.*)$")
         if let match = bulletOrTaskPattern.firstMatch(in: lineText, range: NSRange(location: 0, length: (lineText as NSString).length)) {
             let indent = (lineText as NSString).substring(with: match.range(at: 1))
             let marker = (lineText as NSString).substring(with: match.range(at: 2))
@@ -352,6 +450,34 @@ final class TaskTextView: NSTextView {
                 }
             }
             return true
+        }
+
+        // General text outdent on Shift+Tab
+        if shift {
+            let leadingPattern = try! NSRegularExpression(pattern: "^([ \\t]+)(.*)$")
+            if let match = leadingPattern.firstMatch(in: lineText, range: NSRange(location: 0, length: (lineText as NSString).length)) {
+                let indent = (lineText as NSString).substring(with: match.range(at: 1))
+                let rest = (lineText as NSString).substring(with: match.range(at: 2))
+                let newIndent: String
+                let removedCount: Int
+                if indent.hasPrefix("  ") {
+                    newIndent = String(indent.dropFirst(2))
+                    removedCount = 2
+                } else if indent.hasPrefix("\t") {
+                    newIndent = String(indent.dropFirst(1))
+                    removedCount = 1
+                } else {
+                    newIndent = String(indent.dropFirst(1))
+                    removedCount = 1
+                }
+                let newLine = "\(newIndent)\(rest)"
+                if shouldChangeText(in: lineRange, replacementString: newLine) {
+                    storage.replaceCharacters(in: lineRange, with: newLine)
+                    didChangeText()
+                    setSelectedRange(NSRange(location: max(0, sel.location - removedCount), length: 0))
+                    return true
+                }
+            }
         }
 
         return false

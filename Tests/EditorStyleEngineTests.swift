@@ -30,6 +30,7 @@ struct EditorStyleEngineTests {
         SyncRunnerTests.run { check($0, $1) }
         ImageInteractionTests.run { check($0, $1) }
         testCustomNoteTitleBehavior()
+        testOrderedListIndentation()
         PersistenceTests.run { check($0, $1) }
 
         guard failures == 0 else {
@@ -601,6 +602,48 @@ struct EditorStyleEngineTests {
         check(!note.hasCustomTitle, "cleared title should not be marked as custom")
         check(note.displayTitle == "First line of body", "clearing title must restore auto-derived title")
         check(note.preview == "Second line", "clearing title must restore preview skipping first line")
+    }
+
+    private static func testOrderedListIndentation() {
+        let tv1 = makeTaskTextView("1. First\n2. ")
+        tv1.setSelectedRange(NSRange(location: (tv1.string as NSString).length, length: 0))
+        tv1.insertTab(nil)
+        check(tv1.string == "1. First\n  1.1. ", "Tab on '2. ' under '1.' should become '  1.1. ', got '\(tv1.string)'")
+
+        tv1.insertBacktab(nil)
+        check(tv1.string == "1. First\n2. ", "Shift+Tab on '  1.1. ' should revert to '2. ', got '\(tv1.string)'")
+
+        let tv2 = makeTaskTextView("1. First\n2. Second\n3. ")
+        tv2.setSelectedRange(NSRange(location: (tv2.string as NSString).length, length: 0))
+        tv2.insertTab(nil)
+        check(tv2.string == "1. First\n2. Second\n  2.1. ", "Tab on '3. ' under '2.' should become '  2.1. ', got '\(tv2.string)'")
+
+        let tv3 = makeTaskTextView("1. First\n  1.1. Sub 1\n  1.2. ")
+        tv3.setSelectedRange(NSRange(location: (tv3.string as NSString).length, length: 0))
+        tv3.insertTab(nil)
+        check(tv3.string == "1. First\n  1.1. Sub 1\n    1.1.1. ", "Tab on '  1.2. ' under '1.1.' should become '    1.1.1. ', got '\(tv3.string)'")
+
+        let tv4 = makeTaskTextView("1. First\n  1.1. Sub 1\n  1.2. Sub 2\n  1.3. ")
+        tv4.setSelectedRange(NSRange(location: (tv4.string as NSString).length, length: 0))
+        tv4.insertTab(nil)
+        check(tv4.string == "1. First\n  1.1. Sub 1\n  1.2. Sub 2\n    1.2.1. ", "Tab on '  1.3. ' under '1.2.' should become '    1.2.1. ', got '\(tv4.string)'")
+
+        let tv5 = makeTaskTextView("1. First\n  1.1. Sub 1\n  1.2. Sub 2\n    1.2.1. Deep\n    1.2.2. ")
+        tv5.setSelectedRange(NSRange(location: (tv5.string as NSString).length, length: 0))
+        tv5.insertBacktab(nil)
+        check(tv5.string == "1. First\n  1.1. Sub 1\n  1.2. Sub 2\n    1.2.1. Deep\n  1.3. ", "Shift+Tab on '    1.2.2. ' should revert to '  1.3. ', got '\(tv5.string)'")
+
+        let tv6 = makeTaskTextView("1. First")
+        tv6.setSelectedRange(NSRange(location: (tv6.string as NSString).length, length: 0))
+        tv6.insertNewline(nil)
+        check(tv6.string == "1. First\n2. ", "Newline after '1. First' should produce '2. ', got '\(tv6.string)'")
+        tv6.insertTab(nil)
+        check(tv6.string == "1. First\n  1.1. ", "Tab on '2. ' after newline should become '  1.1. ', got '\(tv6.string)'")
+
+        let tv7 = makeTaskTextView("Plain text")
+        tv7.setSelectedRange(NSRange(location: (tv7.string as NSString).length, length: 0))
+        tv7.insertTab(nil)
+        check(tv7.string == "Plain text  ", "Tab on plain text should insert 2 spaces, got '\(tv7.string)'")
     }
 
     private static func makeTextView(_ source: String) -> NSTextView {
