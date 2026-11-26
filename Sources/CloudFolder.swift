@@ -84,12 +84,16 @@ enum CloudFolder {
 
     static func conflictName(for original: String, at date: Date) -> String {
         let base = (original as NSString).deletingPathExtension
-        return base + " (conflict " + Fmt.fileStamp.string(from: date) + ").\(fileExtension)"
+        // Sync can preserve multiple versions in one second; never overwrite a prior loser.
+        let uniqueID = UUID().uuidString.lowercased()
+        let timestamp = Fmt.fileStamp.string(from: date)
+        return "\(base) (conflict \(timestamp)-\(uniqueID)).\(fileExtension)"
     }
 
     @discardableResult
     static func writeConflict(_ text: String, named fileName: String,
-                              in directory: URL = CloudFolder.url) -> Bool {
+                              in directory: URL = CloudFolder.url,
+                              at date: Date = Date()) -> Bool {
         let folder = directory.appendingPathComponent(conflictsFolderName, isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -97,7 +101,7 @@ enum CloudFolder {
             NSLog("Noty cloud: cannot create the conflicts folder — \(error.localizedDescription)")
             return false
         }
-        return write(text, to: folder.appendingPathComponent(conflictName(for: fileName, at: Date())))
+        return write(text, to: folder.appendingPathComponent(conflictName(for: fileName, at: date)))
     }
 
     // MARK: Contents
