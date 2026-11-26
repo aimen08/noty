@@ -259,6 +259,21 @@ enum Settings {
     /// the deck does not open every note in turn.
     static let openOnHoverDelay: TimeInterval = 0.4
 
+    /// While a note is docked to the screen edge, its title column lists every
+    /// note and highlights the open one. Off keeps the single current title.
+    static var edgeTitleColumn: Bool {
+        get { d.object(forKey: "edgeTitleColumn") as? Bool ?? false }
+        set { d.set(newValue, forKey: "edgeTitleColumn") }
+    }
+
+    /// Hide the tab cards along the screen edge while a note is docked there.
+    /// Off keeps the cards beside the open note. Pulling the note off the edge
+    /// brings the cards back even while this stays on.
+    static var hideEdgeTabsWhenDocked: Bool {
+        get { d.object(forKey: "hideEdgeTabsWhenDocked") as? Bool ?? false }
+        set { d.set(newValue, forKey: "hideEdgeTabsWhenDocked") }
+    }
+
     /// Show a lightweight peek / flyout preview card when hovering a tab.
     static var tabPreview: Bool {
         get { d.object(forKey: "tabPreview") as? Bool ?? true }

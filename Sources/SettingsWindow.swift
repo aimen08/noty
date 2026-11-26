@@ -129,6 +129,8 @@ final class SettingsModel: ObservableObject {
     @Published var noteSizeIndex: Int   { didSet { Settings.noteSizeIndex = noteSizeIndex; apply() } }
     @Published var openOnHover: Bool    { didSet { Settings.openOnHover = openOnHover; apply() } }
     @Published var tabPreview: Bool     { didSet { Settings.tabPreview = tabPreview; apply() } }
+    @Published var edgeTitles: Bool     { didSet { Settings.edgeTitleColumn = edgeTitles; apply() } }
+    @Published var hideEdgeTabs: Bool   { didSet { Settings.hideEdgeTabsWhenDocked = hideEdgeTabs; apply() } }
 
     @Published var cloudSync: Bool {
         didSet {
@@ -181,6 +183,8 @@ final class SettingsModel: ObservableObject {
         noteSizeIndex = Settings.noteSizeIndex
         openOnHover = Settings.openOnHover
         tabPreview = Settings.tabPreview
+        edgeTitles = Settings.edgeTitleColumn
+        hideEdgeTabs = Settings.hideEdgeTabsWhenDocked
         cloudSync = Settings.cloudSyncEnabled
         scNewNote = Settings.scNewNote
         scAllNotes = Settings.scAllNotes
@@ -474,6 +478,12 @@ struct SettingsView: View {
             toggleRow(L10n.text("settings.deck.hover_open"),
                       help: L10n.text("settings.deck.hover_open_help"),
                       isOn: $model.openOnHover)
+            toggleRow(L10n.text("settings.deck.edge_titles"),
+                      help: L10n.text("settings.deck.edge_titles_help"),
+                      isOn: $model.edgeTitles)
+            toggleRow(L10n.text("settings.deck.hide_edge_tabs"),
+                      help: L10n.text("settings.deck.hide_edge_tabs_help"),
+                      isOn: $model.hideEdgeTabs)
             toggleRow(L10n.text("menu.show_over_fullscreen"), isOn: $model.overFullScreen)
             toggleRow(L10n.text("settings.deck.one_space"),
                       help: L10n.text("settings.deck.one_space_help"),

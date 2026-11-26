@@ -192,6 +192,71 @@ enum DeckGeom {
     }
 }
 
+// MARK: - Edge title column
+
+/// One note the docked title column may list.
+struct EdgeTitleNote: Equatable {
+    var id: String
+    var title: String
+}
+
+/// A strip in that column. `height` is the laid-out strip, after leftover
+/// space has been shared out — or the natural strip when the column scrolls.
+struct EdgeTitleSlot: Equatable {
+    var id: String
+    var highlighted: Bool
+    var height: CGFloat
+}
+
+struct EdgeTitleLayout: Equatable {
+    var slots: [EdgeTitleSlot]
+    var scrolls: Bool
+}
+
+/// How the open note's edge column divides its height among titles.
+///
+/// Off, the column is the open note's own title at full height. On, every note
+/// gets a strip: they share leftover space when they fit, and otherwise keep
+/// their own strips so the column can scroll.
+enum EdgeTitleColumn {
+    /// The height one title wants before leftover space is shared out.
+    /// Capped so one long title cannot force the whole column to scroll.
+    static func stripHeight(for title: String) -> CGFloat {
+        let label = DeckGeom.verticalLabelHeight(title)
+        return min(DeckGeom.pitchMax, max(DeckGeom.pitchMin, label + DeckGeom.labelPad))
+    }
+
+    static func layout(notes: [EdgeTitleNote], currentID: String,
+                       height: CGFloat, enabled: Bool) -> EdgeTitleLayout {
+        let available = max(0, height)
+        guard enabled else {
+            return EdgeTitleLayout(
+                slots: [EdgeTitleSlot(id: currentID, highlighted: true, height: available)],
+                scrolls: false)
+        }
+        guard !notes.isEmpty else {
+            return EdgeTitleLayout(slots: [], scrolls: false)
+        }
+        let natural = notes.map { stripHeight(for: $0.title) }
+        let total = natural.reduce(0, +)
+        if total > available {
+            return EdgeTitleLayout(slots: zip(notes, natural).map { note, strip in
+                EdgeTitleSlot(id: note.id, highlighted: note.id == currentID, height: strip)
+            }, scrolls: true)
+        }
+        let extra = (available - total) / CGFloat(notes.count)
+        var slots = zip(notes, natural).map { note, strip in
+            EdgeTitleSlot(id: note.id, highlighted: note.id == currentID,
+                          height: strip + extra)
+        }
+        let drift = available - slots.reduce(0) { $0 + $1.height }
+        if let last = slots.indices.last {
+            slots[last].height += drift
+        }
+        return EdgeTitleLayout(slots: slots, scrolls: false)
+    }
+}
+
 // MARK: - Vertical tab labels
 
 enum VerticalLabelOrientation: Equatable {
