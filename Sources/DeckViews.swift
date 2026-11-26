@@ -185,11 +185,20 @@ struct FanColumn: View {
         ZStack(alignment: onRight ? .topTrailing : .topLeading) {
             Group {
                 if deck.showAll && layout.overflows {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        stack.padding(.vertical, 4)
+                    // Hidden tabs leave plus and cog as the only visible rows,
+                    // and they sit at the foot of the scrolled list. Bring them
+                    // into view and hold the list still, so they cannot be
+                    // scrolled away behind cards nobody can see.
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            stack.padding(.vertical, 4)
+                        }
+                        .frame(height: layout.cap)
+                        .scrollClipDisabled()
+                        .scrollDisabled(deck.edgeTabsHidden)
+                        .onAppear { revealActions(proxy) }
+                        .onChange(of: deck.edgeTabsHidden) { _, _ in revealActions(proxy) }
                     }
-                    .frame(height: layout.cap)
-                    .scrollClipDisabled()
                 } else {
                     stack
                 }
@@ -232,6 +241,13 @@ struct FanColumn: View {
                 cancelHoverPreview()
             }
         }
+    }
+
+    private static let actionsAnchor = "deck-actions"
+
+    private func revealActions(_ proxy: ScrollViewProxy) {
+        guard deck.edgeTabsHidden, layout.showsActions else { return }
+        proxy.scrollTo(Self.actionsAnchor, anchor: .bottom)
     }
 
     /// The lap comes from negative stack spacing — real layout, so hit areas follow
@@ -323,6 +339,7 @@ struct FanColumn: View {
                 CogButton { (NSApp.delegate as? AppDelegate)?.openSettings() }
                     .padding(.top, DeckGeom.cogGap - layout.spacing)
                     .staged(index: notes.count + (hiddenCount > 0 ? 1 : 0) + 1, total: total, revealed: isRevealed, onRight: onRight)
+                    .id(Self.actionsAnchor)
             }
         }
         .frame(width: DeckGeom.tabWidth)
